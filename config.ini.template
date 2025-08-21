@@ -1,0 +1,21 @@
+[Paths]
+# Full path to the CSDM project folder (the one you cloned from GitHub)
+# Example: Z:\Github\CSDM
+csdm_project_path = 
+
+# The folder where downloaded demos and final recorded videos will be stored.
+# IMPORTANT: This path MUST match the "Recording Path" you set in OBS.
+# In OBS, go to File -> Settings -> Output -> Recording -> Recording Path
+# Example: Z:\Github\Demo2Video\videos
+output_folder = 
+
+[OBS]
+# The host and port for the obs-websocket plugin.
+# These should match the settings in OBS under Tools -> obs-websocket Settings.
+host = localhost
+port = 4455
+
+[Web]
+# Set a password to protect the web interface.
+# Anyone accessing http://your-ip:5000 will need this password.
+password = your_secret_password

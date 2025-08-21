@@ -1,0 +1,187 @@
+import time
+import logging
+import pyautogui
+import traceback
+import subprocess
+from pywinauto.application import Application
+from pyautogui import ImageNotFoundException
+from obs_recorder import OBSRecorder
+
+def launch_and_connect(csdm_path, demo_path):
+    """
+    Launches CSDM and connects to the main GUI window, handling launcher processes.
+    """
+    try:
+        logging.info("Launching CS Demo Manager...")
+        Application(backend="uia").start(f'"{csdm_path}" import "{demo_path}"')
+        logging.info("Connecting to the main application window...")
+        app = Application(backend="uia").connect(title_re="CS Demo Manager.*", timeout=120)
+        logging.info("CSDM connected successfully.")
+        return app
+    except Exception as e:
+        logging.error(f"Failed to launch or connect to CSDM: {e}")
+        return None
+
+def trigger_analysis(app):
+    """
+    Intelligently determines the state of the demo and navigates to the match room.
+    """
+    try:
+        logging.info("Finding the main CSDM window...")
+        main_window = app.top_window()
+        main_window.wait('exists', timeout=120)
+        time.sleep(5)
+        main_window.set_focus()
+        logging.info("UI stabilized. Determining application state...")
+
+        # --- NEW RELIABLE WORKFLOW ---
+
+        # 1. First, check for the "See Match" button.
+        see_match_location = None
+        try:
+            see_match_location = pyautogui.locateCenterOnScreen('seematch_button.png', confidence=0.99)
+        except ImageNotFoundException:
+            pass # This is expected if analysis hasn't been run yet.
+
+        if see_match_location:
+            # If we find "See Match", analysis is done. Click it and we're finished.
+            logging.info("'See Match' button found. Clicking to enter match room.")
+            pyautogui.click(see_match_location)
+            time.sleep(3) # Wait for match room to load
+            return True
+
+        # 2. If "See Match" was NOT found, we are either in the match room or need to analyze.
+        #    We can find out by looking for the "Analyze" button.
+        logging.info("'See Match' button not found. Checking for 'Analyze' button...")
+        analyze_location = None
+        try:
+            analyze_location = pyautogui.locateCenterOnScreen('analyze_button.png', confidence=0.8)
+        except ImageNotFoundException:
+            pass # This is expected if we are already in the match room.
+        
+        if analyze_location is None:
+            # If we can't find "Analyze" either, we must already be in the match room.
+            logging.info("'Analyze' button not found. Assuming we are in the match room.")
+            return True
+
+        # 3. If we found the "Analyze" button, we must analyze the demo.
+        logging.info("'Analyze' button found. Starting analysis...")
+        pyautogui.click(analyze_location)
+        
+        # Wait for analysis to finish by looking for the 'See Match' button to appear.
+        logging.info("Waiting for analysis to finish by looking for 'seematch_button.png'...")
+        analysis_finished = False
+        for _ in range(60): # Wait up to 60 seconds
+            try:
+                see_match_location = pyautogui.locateCenterOnScreen('seematch_button.png', confidence=0.8)
+                if see_match_location:
+                    analysis_finished = True
+                    logging.info("Analysis finished ('seematch_button.png' is visible). Clicking it.")
+                    pyautogui.click(see_match_location)
+                    time.sleep(3) # Wait for match room to load
+                    break
+            except ImageNotFoundException:
+                pass
+            time.sleep(1)
+
+        if not analysis_finished:
+            logging.error("Analysis did not seem to finish as 'seematch_button.png' did not appear.")
+            return False
+        
+        return True
+
+    except Exception as e:
+        logging.error("An error occurred during the analysis/navigation phase:")
+        logging.error(traceback.format_exc())
+        return False
+
+
+def find_player_and_start_highlights(app, player_name, obs_recorder):
+    """
+    Finds a player, starts highlights, and waits for playback to finish.
+    """
+    try:
+        main_window = app.top_window()
+        main_window.wait('exists', timeout=120)
+        time.sleep(2)
+        main_window.set_focus()
+
+        player_cell = None
+        for i in range(5):
+            logging.info(f"Searching for player '{player_name}' (Attempt {i+1}/5)...")
+            player_cells = main_window.descendants(title=player_name, control_type="DataItem")
+            if player_cells:
+                player_cell = player_cells[0]
+                logging.info(f"Player '{player_name}' found.")
+                break
+            time.sleep(2)
+        if not player_cell:
+            logging.error(f"Player '{player_name}' not found.")
+            return False
+
+        player_cell.right_click_input()
+        time.sleep(1)
+
+        try:
+            watch_location = pyautogui.locateCenterOnScreen('watch_menu_item.png', confidence=0.8)
+            if not watch_location:
+                logging.error("Could not find 'watch_menu_item.png'.")
+                return False
+            pyautogui.moveTo(watch_location)
+            time.sleep(0.5)
+
+            highlights_location = pyautogui.locateCenterOnScreen('highlights_menu_item.png', confidence=0.8)
+            if not highlights_location:
+                logging.error("Could not find 'highlights_menu_item.png'.")
+                return False
+            pyautogui.click(highlights_location)
+            time.sleep(1)
+
+            player_location = pyautogui.locateCenterOnScreen('popup_player.png', confidence=0.95)
+            if not player_location:
+                logging.error("Could not find 'popup_player.png'.")
+                return False
+            pyautogui.click(player_location)
+        except ImageNotFoundException as e:
+            logging.error(f"Image not found during menu navigation: {e}")
+            return False
+
+        logging.info("Clicked 'Player' button, waiting 22 seconds for CS2 to launch...")
+        time.sleep(22)
+
+        # Start recording via OBS
+        obs_recorder.start_recording()
+        
+        logging.info(f"Recording started for '{player_name}'.")
+
+        logging.info("Playback in progress. Waiting for CS2 main menu to appear...")
+        for _ in range(1800):
+            try:
+                if pyautogui.locateOnScreen('cs2_main_menu.png', confidence=0.9):
+                    logging.info("CS2 main menu detected. Highlights finished.")
+                    return True # Success
+            except ImageNotFoundException:
+                pass
+            time.sleep(1)
+        
+        logging.error("Timed out waiting for CS2 main menu.")
+        return False # Timed out
+
+    except Exception as e:
+        logging.error(f"Error starting highlights: {e}")
+        logging.error(traceback.format_exc())
+        return False
+
+def force_close_cs2():
+    logging.info("Attempting to force-close CS2...")
+    try:
+        result = subprocess.run(['taskkill', '/F', '/IM', 'cs2.exe', '/T'],
+                                capture_output=True, text=True, check=False)
+        if result.returncode == 0:
+            logging.info("CS2 terminated successfully.")
+        elif result.returncode == 128:
+            logging.warning("CS2 process not found.")
+        else:
+            logging.error(f"Taskkill failed: {result.stderr.strip()}")
+    except Exception as e:
+        logging.error(f"Error closing CS2: {e}")

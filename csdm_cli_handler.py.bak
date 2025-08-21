@@ -1,0 +1,97 @@
+import subprocess
+import logging
+import os
+import time
+import pyautogui
+
+# This module handles all interactions with the CS Demo Manager CLI tools.
+
+def analyze_demo(csdm_project_path, demo_path):
+    """
+    Runs the 'analyze' command on a demo file using the node CLI.
+    """
+    command = ['node', 'out/cli.js', 'analyze', demo_path]
+    logging.info(f"Executing analysis command in '{csdm_project_path}': {' '.join(command)}")
+    try:
+        result = subprocess.run(
+            command,
+            cwd=csdm_project_path,
+            capture_output=True,
+            text=True,
+            check=True,
+            shell=True
+        )
+        logging.info("Analysis command completed successfully.")
+        return True
+    except subprocess.CalledProcessError as e:
+        logging.error(f"Analysis command failed. Stderr: {e.stderr}")
+        return False
+    except Exception as e:
+        logging.error(f"An unexpected error occurred during analysis: {e}")
+        return False
+
+def start_highlights(csdm_project_path, demo_path, steam_id_64):
+    """
+    Launches CS2 to play highlights for a specific player.
+    """
+    command = ['node', 'out/cli.js', 'highlights', demo_path, steam_id_64]
+    logging.info(f"Executing highlights command in '{csdm_project_path}': {' '.join(command)}")
+    
+    try:
+        # We just need to launch the process and don't need to wait for it.
+        subprocess.Popen(
+            command,
+            cwd=csdm_project_path,
+            shell=True
+        )
+        logging.info("Highlights command sent. CS2 should be launching.")
+        return True
+    except Exception as e:
+        logging.error(f"An unexpected error occurred while starting highlights: {e}")
+        return False
+
+def wait_for_cs2_main_menu(timeout=1800):
+    """
+    Waits for the CS2 main menu to appear on screen.
+
+    Args:
+        timeout (int): The maximum time in seconds to wait.
+
+    Returns:
+        bool: True if the main menu was found, False otherwise.
+    """
+    logging.info("Waiting for CS2 main menu to appear on screen...")
+    start_time = time.time()
+    while time.time() - start_time < timeout:
+        try:
+            if pyautogui.locateOnScreen('cs2_main_menu.png', confidence=0.8):
+                logging.info("CS2 main menu detected. Highlights have finished.")
+                return True
+        except pyautogui.ImageNotFoundException:
+            # This is the expected state while the demo is playing.
+            pass
+        except Exception as e:
+            # Log other potential errors from pyautogui
+            logging.warning(f"An error occurred during image search: {e}")
+
+        time.sleep(2) # Check every 2 seconds
+
+    logging.error(f"Timed out after {timeout} seconds waiting for cs2_main_menu.png to appear.")
+    return False
+
+def force_close_cs2():
+    """
+    Forcefully terminates the Counter-Strike 2 process.
+    """
+    logging.info("Attempting to force-close Counter-Strike 2 (cs2.exe)...")
+    try:
+        result = subprocess.run(['taskkill', '/F', '/IM', 'cs2.exe', '/T'],
+                                capture_output=True, text=True, check=False)
+        if result.returncode == 0:
+            logging.info("CS2 terminated successfully.")
+        elif result.returncode == 128:
+            logging.warning("CS2 process not found.")
+        else:
+            logging.error(f"Taskkill failed: {result.stderr.strip()}")
+    except Exception as e:
+        logging.error(f"Error closing CS2: {e}")

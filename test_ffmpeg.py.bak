@@ -1,0 +1,93 @@
+import configparser
+import time
+import logging
+import sys
+import os
+
+# Import the recorder functions from your existing recorder.py file
+import recorder
+
+def setup_logging():
+    """Sets up basic logging for the test script."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.StreamHandler(sys.stdout)
+        ]
+    )
+
+def run_ffmpeg_test():
+    """
+    Runs a standalone test of the recording functionality for a fixed duration.
+    """
+    setup_logging()
+    logging.info("--- Starting FFmpeg Recording Test ---")
+
+    # 1. Load Configuration from config.ini
+    config = configparser.ConfigParser()
+    if not os.path.exists('config.ini'):
+        logging.error("config.ini not found! Please ensure the file exists in the same directory.")
+        return
+        
+    config.read('config.ini')
+    
+    try:
+        ffmpeg_path = config['Paths']['ffmpeg_executable']
+        output_folder = config['Paths']['output_folder']
+        screen_width = int(config['Recording']['screen_width'])
+        screen_height = int(config['Recording']['screen_height'])
+        offset_x = int(config['Recording']['offset_x'])
+        offset_y = int(config['Recording']['offset_y'])
+        audio_device_name = config['Audio']['device_name']
+    except KeyError as e:
+        logging.error(f"Configuration error: Missing key {e} in config.ini.")
+        return
+
+    # 2. Define test parameters
+    test_duration = 10  # seconds
+    test_video_filename = "ffmpeg_test_output.mp4"
+    test_video_filepath = os.path.join(output_folder, test_video_filename)
+
+    logging.info(f"This test will record your screen and audio for {test_duration} seconds.")
+    logging.info(f"Output file will be saved to: {test_video_filepath}")
+    
+    recorder_process = None
+    try:
+        # 3. Start the recording
+        recorder_process = recorder.start_recording(
+            ffmpeg_path, test_video_filepath, screen_width, screen_height, offset_x, offset_y, audio_device_name
+        )
+
+        if not recorder_process:
+            raise RuntimeError("Failed to start the recorder. Check FFmpeg path and audio device name.")
+
+        # Check if the process terminated unexpectedly right after starting
+        time.sleep(2) # Give it a moment to potentially fail
+        if recorder_process.poll() is not None:
+             raise RuntimeError("FFmpeg process terminated unexpectedly. Check for errors in the command or device names.")
+
+        # 4. Wait for the specified duration
+        logging.info(f"Recording for {test_duration} seconds...")
+        time.sleep(test_duration)
+        logging.info("Recording time finished.")
+
+    except Exception as e:
+        logging.error(f"An error occurred during the test: {e}")
+    finally:
+        # 5. Stop the recording
+        if recorder_process:
+            recorder.stop_recording(recorder_process)
+        
+        if os.path.exists(test_video_filepath):
+            logging.info("Test successful! Video file was created.")
+            logging.info("Please check the video for correct audio and video capture.")
+        else:
+            logging.error("Test failed. No video file was created.")
+            logging.error("Please check the FFmpeg command in recorder.py and your audio/video device settings.")
+
+        logging.info("--- FFmpeg Recording Test Finished ---")
+
+
+if __name__ == '__main__':
+    run_ffmpeg_test()

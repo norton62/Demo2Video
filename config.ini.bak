@@ -1,0 +1,29 @@
+[Paths]
+# Full path to the CS Demo Manager executable
+csdm_executable = C:\Users\Jake\AppData\Local\Programs\cs-demo-manager\cs-demo-manager.exe
+
+# IMPORTANT: The output folder where OBS is configured to save recordings.
+# In OBS, go to File -> Settings -> Output -> Recording -> Recording Path
+output_folder = Z:\Github\Demo2Video\videos
+
+# The following FFmpeg and Recording sections are no longer used.
+# You can remove them if you wish.
+[Recording]
+screen_width = 1920
+screen_height = 1080
+offset_x = 0
+offset_y = 0
+
+[Audio]
+device_name = Stereo Mix
+
+[OBS]
+# The host and port for the obs-websocket plugin.
+# These should match the settings in OBS under Tools -> obs-websocket Settings.
+host = localhost
+port = 4455
+
+[Web]
+# Set a password to protect the web interface.
+# Anyone accessing http://your-ip:5000 will need this password.
+password = CSWatch

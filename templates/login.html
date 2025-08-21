@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - CS Demo Processor</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container" style="max-width: 400px;">
+        <h1>Login Required</h1>
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <p class="form-message {{ category }}">{{ message }}</p>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="form-container">
+            <form method="POST" action="{{ url_for('login') }}">
+                <input type="password" id="password" name="password" placeholder="Enter Password" required>
+                <button type="submit">Login</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

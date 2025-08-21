@@ -1,0 +1,100 @@
+import subprocess
+import logging
+import os
+
+# This module is responsible for all interactions with the CS Demo Manager executable.
+
+def run_csdm_command(csdm_path, command_args):
+    """
+    Executes a command using the CS Demo Manager executable.
+
+    Args:
+        csdm_path (str): The full path to the CSDemoManager.exe.
+        command_args (list): A list of arguments to pass to the executable.
+
+    Returns:
+        bool: True if the command was successful, False otherwise.
+    """
+    command = [csdm_path] + command_args
+    logging.info(f"Executing CSDM command: {' '.join(command)}")
+    try:
+        # Using Popen to have more control over the process, especially for long-running tasks.
+        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        
+        # We can monitor stdout and stderr if needed
+        stdout, stderr = process.communicate()
+
+        if process.returncode == 0:
+            logging.info(f"CSDM command successful.")
+            if stdout:
+                logging.debug(f"CSDM stdout: {stdout}")
+            return True
+        else:
+            logging.error(f"CSDM command failed with return code {process.returncode}")
+            if stderr:
+                logging.error(f"CSDM stderr: {stderr}")
+            return False
+    except FileNotFoundError:
+        logging.error(f"Error: The CSDM executable was not found at '{csdm_path}'")
+        return False
+    except Exception as e:
+        logging.error(f"An unexpected error occurred while running CSDM command: {e}")
+        return False
+
+def import_demo(csdm_path, demo_path):
+    """
+    Imports a demo file into CS Demo Manager.
+
+    Args:
+        csdm_path (str): Path to CSDemoManager.exe.
+        demo_path (str): Path to the .dem file.
+
+    Returns:
+        bool: True if import was successful, False otherwise.
+    """
+    logging.info(f"Importing demo: {demo_path}")
+    return run_csdm_command(csdm_path, ['import', demo_path])
+
+def analyze_demo(csdm_path, demo_filename):
+    """
+    Runs analysis on an already imported demo.
+
+    Args:
+        csdm_path (str): Path to CSDemoManager.exe.
+        demo_filename (str): The filename of the demo (e.g., "mydemo.dem").
+
+    Returns:
+        bool: True if analysis was successful, False otherwise.
+    """
+    logging.info(f"Analyzing demo: {demo_filename}")
+    # The 'analyse' command might be the correct one, please verify with CSDM's CLI documentation.
+    return run_csdm_command(csdm_path, ['analyse', demo_filename])
+
+
+def start_highlights(csdm_path, demo_path, player_name):
+    """
+    Starts the highlight playback for a specific player. This is a non-blocking call.
+
+    Args:
+        csdm_path (str): Path to CSDemoManager.exe.
+        demo_path (str): The FULL path to the demo file.
+        player_name (str): The in-game name of the suspected cheater.
+
+    Returns:
+        subprocess.Popen: The process object for the running CSDM instance, or None on failure.
+    """
+    # UPDATED: Pass the full demo_path instead of just the filename
+    command = [csdm_path, 'highlights', demo_path, '--player', player_name]
+    logging.info(f"Starting highlights for player '{player_name}' in demo '{os.path.basename(demo_path)}'")
+    try:
+        # Start the process and return the Popen object so the main script can monitor it.
+        process = subprocess.Popen(command)
+        logging.info(f"CSDM highlights process started with PID: {process.pid}")
+        return process
+    except FileNotFoundError:
+        logging.error(f"Error: The CSDM executable was not found at '{csdm_path}'")
+        return None
+    except Exception as e:
+        logging.error(f"Failed to start CSDM highlights: {e}")
+        return None
+

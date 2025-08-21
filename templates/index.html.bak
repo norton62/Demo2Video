@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CS Demo Processor</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>CS Demo Processor</h1>
+
+        <div class="status-box">
+            <h2>Current Status: <span id="current-status">Idle</span></h2>
+            <p><strong>Suspect:</strong> <span id="current-suspect">N/A</span></p>
+            <p><strong>Step:</strong> <span id="current-step">Waiting for a new demo...</span></p>
+        </div>
+
+        <div class="grid-container">
+            <div class="form-container">
+                <h2>Add New Demo to Queue</h2>
+                <form id="demo-form">
+                    <input type="text" id="share_code" name="share_code" placeholder="Enter Steam Run Link or Share Code" required>
+                    <!-- UPDATED: Changed from suspect_name to suspect_steam_id -->
+                    <input type="text" id="suspect_steam_id" name="suspect_steam_id" placeholder="Enter Suspect's Steam64 ID" required>
+                    <input type="text" id="submitted_by" name="submitted_by" placeholder="Your Name" required>
+                    <button type="submit">Add to Queue</button>
+                </form>
+                <p id="form-message"></p>
+            </div>
+
+            <div class="queue-container">
+                <h2>Processing Queue (<span id="queue-count">0</span>)</h2>
+                <ul id="queue-list">
+                    <!-- Queue items will be added here by JavaScript -->
+                </ul>
+            </div>
+        </div>
+
+        <div class="results-container">
+            <h2>Completed Jobs</h2>
+            <table id="results-table">
+                <thead>
+                    <tr>
+                        <!-- UPDATED: Changed header to Steam64 ID -->
+                        <th>Suspect Steam64 ID</th>
+                        <th>Share Code</th>
+                        <th>Submitted By</th>
+                        <th>YouTube Link</th>
+                    </tr>
+                </thead>
+                <tbody id="results-body">
+                    <!-- Results will be added here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // Function to fetch and update status from the server
+        async function updateStatus() {
+            try {
+                const response = await fetch('/status');
+                const data = await response.json();
+
+                // Update current job status
+                document.getElementById('current-status').textContent = data.current_job.status;
+                document.getElementById('current-suspect').textContent = data.current_job.suspect || 'N/A';
+                document.getElementById('current-step').textContent = data.current_job.step;
+
+                // Update queue
+                const queueList = document.getElementById('queue-list');
+                const queueCount = document.getElementById('queue-count');
+                queueList.innerHTML = ''; // Clear the list
+                queueCount.textContent = data.queue.length;
+
+                if (data.queue.length === 0) {
+                    queueList.innerHTML = '<li>The queue is empty.</li>';
+                } else {
+                    data.queue.forEach(job => {
+                        const li = document.createElement('li');
+                        li.textContent = `Suspect: ${job.suspect_steam_id} (Code: ${job.share_code.substring(0, 20)}...)`;
+                        queueList.appendChild(li);
+                    });
+                }
+
+                // Update results table
+                const resultsBody = document.getElementById('results-body');
+                resultsBody.innerHTML = ''; // Clear the table body
+                if (data.results && data.results.length > 0) {
+                    data.results.forEach(result => {
+                        const row = resultsBody.insertRow(0); // Insert at the top
+                        const cell1 = row.insertCell(0);
+                        const cell2 = row.insertCell(1);
+                        const cell3 = row.insertCell(2);
+                        const cell4 = row.insertCell(3);
+
+                        // UPDATED: Use suspect_steam_id
+                        cell1.textContent = result.suspect_steam_id;
+                        cell2.textContent = result.share_code;
+                        cell3.textContent = result.submitted_by;
+                        
+                        const link = document.createElement('a');
+                        link.href = result.youtube_link;
+                        link.textContent = 'Watch Video';
+                        link.target = '_blank';
+                        
+                        if (result.youtube_link === 'Upload Failed') {
+                            link.href = '#';
+                            link.textContent = 'Upload Failed';
+                            link.style.color = '#cf6679';
+                            link.style.pointerEvents = 'none';
+                        }
+
+                        cell4.appendChild(link);
+                    });
+                } else {
+                    const row = resultsBody.insertRow(0);
+                    const cell = row.insertCell(0);
+                    cell.colSpan = 4;
+                    cell.textContent = 'No completed jobs yet.';
+                    cell.style.textAlign = 'center';
+                }
+
+            } catch (error) {
+                console.error('Failed to fetch status:', error);
+            }
+        }
+
+        // Handle form submission
+        document.getElementById('demo-form').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const formData = new FormData(this);
+            const formMessage = document.getElementById('form-message');
+
+            try {
+                const response = await fetch('/add_demo', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+                
+                formMessage.textContent = result.message;
+                formMessage.className = result.success ? 'success' : 'error';
+
+                if (result.success) {
+                    this.reset(); // Clear the form
+                }
+            } catch (error) {
+                formMessage.textContent = 'An error occurred while submitting the form.';
+                formMessage.className = 'error';
+            }
+            
+            // Update status immediately after submission
+            updateStatus();
+        });
+
+        // Fetch status every 3 seconds
+        setInterval(updateStatus, 3000);
+        // Initial fetch on page load
+        updateStatus();
+    </script>
+</body>
+</html>

@@ -1,0 +1,84 @@
+import requests
+import bz2
+import shutil
+import os
+import logging
+import re
+
+# This module handles downloading and extracting CS2 demos from share codes.
+
+API_URLS = [
+    "https://csreplay.moon-moon.tech/decode",
+    "https://csreplay2.moon-moon.tech/decode",
+    "https://appeared-cite-reach-fy.trycloudflare.com"
+]
+
+def parse_share_code(share_link_or_code):
+    """Extracts the match share code from a full steam link or just the code."""
+    match = re.search(r'(CSGO(-[A-Za-z0-9]{5}){5})', share_link_or_code)
+    if match:
+        return match.group(1)
+    return None
+
+def download_demo(share_code, download_folder):
+    """
+    Downloads a demo using a share code via the CSReplay API.
+    This function no longer needs the suspect's name as the Steam ID is handled by the main script.
+
+    Returns:
+        str: The full path to the downloaded .dem file, or None on failure.
+    """
+    download_url = None
+    api_response_data = None
+    for api_url in API_URLS:
+        try:
+            full_api_url = f"{api_url}/{share_code}"
+            logging.info(f"Attempting to get download link from: {full_api_url}")
+            
+            response = requests.get(full_api_url)
+            response.raise_for_status()
+
+            api_response_data = response.json()
+            download_url = api_response_data.get("downloadLink")
+
+            if download_url:
+                logging.info("Successfully retrieved download link.")
+                break
+            else:
+                logging.warning(f"API at {api_url} did not return a download URL.")
+
+        except requests.exceptions.RequestException as e:
+            logging.error(f"Failed to connect to API at {api_url}: {e}")
+            continue
+    
+    if not download_url:
+        logging.error("Failed to get a download URL from all available APIs.")
+        return None
+
+    # Download the demo file
+    try:
+        logging.info(f"Downloading demo from: {download_url}")
+        
+        bz2_filename = os.path.join(download_folder, f"{share_code}.dem.bz2")
+        dem_filename = os.path.join(download_folder, f"{share_code}.dem")
+
+        with requests.get(download_url, stream=True) as r:
+            r.raise_for_status()
+            with open(bz2_filename, 'wb') as f:
+                for chunk in r.iter_content(chunk_size=8192):
+                    f.write(chunk)
+        
+        logging.info("Download complete. Extracting demo...")
+
+        with bz2.open(bz2_filename, 'rb') as f_in:
+            with open(dem_filename, 'wb') as f_out:
+                shutil.copyfileobj(f_in, f_out)
+
+        logging.info(f"Extraction complete. Demo saved to: {dem_filename}")
+        os.remove(bz2_filename)
+        
+        return dem_filename
+
+    except Exception as e:
+        logging.error(f"An error occurred during download/extraction: {e}")
+        return None

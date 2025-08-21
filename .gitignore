@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+
+# IDE files
+.vscode/
+.idea/
+
+# Sensitive Info
+config.ini
+client_secrets.json
+token.json
+results.json
+
+# Temporary files
+*.temp.*
+
+# Log files
+logs/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
