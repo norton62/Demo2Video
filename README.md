@@ -22,7 +22,7 @@ This project uses the command-line tools provided by **CS Demo Manager** to hand
 
 * **Python 3.7+**: Ensure Python is installed and added to your system's PATH.
 * **Node.js**: The CSDM CLI tools require Node.js. Download and install it from [nodejs.org](https://nodejs.org/).
-* **Modified CS Demo Manager (Project)**: **IMPORTANT:** This script requires a modified version of the CS Demo Manager project with a working highlights CLI feature. You cannot use the official repository directly. You must clone the specific version provided for this project. *(Note: You should replace this text with a link to your forked GitHub repository).*
+* **Modified CS Demo Manager (Project)**: **IMPORTANT:** This script requires a modified version of the CS Demo Manager project with a working highlights CLI feature. You cannot use the official repository directly. You must clone the specific version provided for this project. *https://github.com/norton62/cs-demo-manager*
 * **OBS Studio**: For recording. Download from [obsproject.com](https://obsproject.com/).
 
 ### 2. Initial Setup
@@ -33,7 +33,7 @@ This project uses the command-line tools provided by **CS Demo Manager** to hand
     pip install -r requirements.txt
     ```
 3.  **Install CSDM Project Dependencies**:
-    * Navigate to your cloned **modified** CSDM project folder (e.g., `Z:\Github\CSDM`).
+    * Navigate to your cloned **modified** CSDM project folder.
     * Run `npm install` to install all the necessary Node.js packages.
 
 ### 3. Configuration
@@ -70,7 +70,7 @@ To upload videos, you need Google API credentials.
 ## How to Run
 
 1.  **Start the CSDM Dev Server**:
-    * Open a terminal and navigate to your **modified** CSDM project folder (e.g., `Z:\Github\CSDM`).
+    * Open a terminal and navigate to your **modified** CSDM project folder.
     * Run the command: `node scripts/develop-cli.mjs`
     * **Leave this terminal running in the background.**
 2.  **Start OBS Studio**:
