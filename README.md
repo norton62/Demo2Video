@@ -15,31 +15,6 @@ This project uses the command-line tools provided by **CS Demo Manager** to hand
 * **Persistent Results**: Saves a history of completed jobs in a local `results.json` file.
 * **Password Protection**: The web interface is protected by a simple password.
 
-## Project Structure
-
-For this program to work, your folder structure should look like this:
-
-/cs-demo-processor/
-|-- main.py
-|-- web_server.py
-|-- demo_downloader.py
-|-- csdm_cli_handler.py
-|-- youtube_uploader.py
-|-- obs_recorder.py
-|-- config.ini
-|-- config.ini.template
-|-- requirements.txt
-|-- results.json
-|-- .gitignore
-|-- /templates/
-|   |-- index.html
-|   |-- login.html
-|-- /static/
-|   |-- style.css
-|-- /logs/
-|   |-- (log files will be created here)
-|-- /videos/
-|   |-- (downloaded demos and recorded videos go here)
 
 ## Setup Instructions
 
