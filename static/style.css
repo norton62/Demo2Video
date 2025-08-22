@@ -230,6 +230,62 @@ button:hover {
     background-color: #a362f7;
 }
 
+/* Action buttons for local files */
+.action-buttons {
+    margin-top: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.copy-location-btn {
+    padding: 10px 20px;
+    font-size: 14px;
+    background-color: rgba(3, 218, 198, 0.1);
+    color: #03dac6;
+    border: 2px solid #03dac6;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+    min-width: 150px;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(3, 218, 198, 0.2);
+}
+
+.copy-location-btn:hover {
+    background-color: #03dac6;
+    color: #121212;
+    box-shadow: 0 4px 8px rgba(3, 218, 198, 0.3);
+    transform: translateY(-1px);
+}
+
+.youtube-upload-btn {
+    padding: 10px 20px;
+    font-size: 14px;
+    background-color: rgba(255, 87, 87, 0.1);
+    color: #ff5757;
+    border: 2px solid #ff5757;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+    min-width: 150px;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(255, 87, 87, 0.2);
+}
+
+.youtube-upload-btn:hover {
+    background-color: #ff5757;
+    color: #ffffff;
+    box-shadow: 0 4px 8px rgba(255, 87, 87, 0.3);
+    transform: translateY(-1px);
+}
+
 /* Modal Styles */
 .modal {
     display: none;

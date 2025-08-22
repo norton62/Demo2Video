@@ -224,10 +224,15 @@
                 }
             } else if (result.task_status === 'Saved Locally') {
                 // Local video
+                const filePath = result.final_video_path || 'Path not available';
                 modalContent.innerHTML = `
                     <p><strong>Video saved locally:</strong></p>
-                    <p>${result.final_video_path || 'Path not available'}</p>
+                    <p>${filePath}</p>
                     <p><em>Note: Local videos cannot be embedded in the web interface. Please access the file directly from your file system.</em></p>
+                    <div class="action-buttons">
+                        <button class="copy-location-btn" onclick="copyFileLocation('${filePath.replace(/\\/g, '\\\\')}')">Copy File Location</button>
+                        <a href="https://www.youtube.com/upload" target="_blank" class="youtube-upload-btn">Upload on Youtube</a>
+                    </div>
                 `;
             } else {
                 // Error or other status
@@ -257,6 +262,116 @@
         
         function closeModal() {
             document.getElementById('video-modal').style.display = 'none';
+        }
+        
+        // Function to copy file location to clipboard
+        function copyFileLocation(filePath) {
+            if (filePath === 'Path not available') {
+                alert('File path is not available');
+                return;
+            }
+            
+            const button = event.target;
+            const originalText = button.textContent;
+            const originalBgColor = button.style.backgroundColor;
+            
+            // Try multiple methods to copy to clipboard
+            function showSuccess() {
+                button.textContent = 'Copied!';
+                button.style.backgroundColor = '#4caf50';
+                button.style.color = '#ffffff';
+                
+                setTimeout(function() {
+                    button.textContent = originalText;
+                    button.style.backgroundColor = '';
+                    button.style.color = '';
+                }, 2000);
+            }
+            
+            function showError() {
+                // Create a modal-like prompt for manual copying
+                const copyModal = document.createElement('div');
+                copyModal.style.cssText = `
+                    position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+                    background: rgba(0,0,0,0.8); z-index: 10000; display: flex; 
+                    align-items: center; justify-content: center;
+                `;
+                
+                const copyContent = document.createElement('div');
+                copyContent.style.cssText = `
+                    background: #1e1e1e; padding: 20px; border-radius: 8px; 
+                    max-width: 80%; color: #e0e0e0; border: 2px solid #ff5757;
+                `;
+                
+                copyContent.innerHTML = `
+                    <h3 style="color: #ff5757; margin-top: 0;">Copy File Path</h3>
+                    <p>Please manually copy the file path:</p>
+                    <textarea readonly style="width: 100%; padding: 10px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; font-family: monospace; resize: none;" rows="3">${filePath}</textarea>
+                    <div style="margin-top: 15px; text-align: right;">
+                        <button onclick="this.parentElement.parentElement.parentElement.remove()" style="padding: 8px 16px; background: #03dac6; color: #121212; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Close</button>
+                    </div>
+                `;
+                
+                copyModal.appendChild(copyContent);
+                document.body.appendChild(copyModal);
+                
+                // Auto-select the text in the textarea
+                const textarea = copyContent.querySelector('textarea');
+                textarea.focus();
+                textarea.select();
+                
+                // Close modal when clicking outside
+                copyModal.addEventListener('click', function(e) {
+                    if (e.target === copyModal) {
+                        copyModal.remove();
+                    }
+                });
+            }
+            
+            // Method 1: Modern clipboard API
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(filePath).then(showSuccess).catch(function() {
+                    // Method 2: Fallback with execCommand
+                    const textArea = document.createElement('textarea');
+                    textArea.value = filePath;
+                    textArea.style.cssText = 'position: fixed; left: -999999px; top: -999999px;';
+                    document.body.appendChild(textArea);
+                    textArea.focus();
+                    textArea.select();
+                    
+                    try {
+                        if (document.execCommand('copy')) {
+                            showSuccess();
+                        } else {
+                            showError();
+                        }
+                    } catch (err) {
+                        showError();
+                    }
+                    
+                    document.body.removeChild(textArea);
+                });
+            } else {
+                // Method 2: Direct execCommand fallback
+                const textArea = document.createElement('textarea');
+                textArea.value = filePath;
+                textArea.style.cssText = 'position: fixed; left: -999999px; top: -999999px;';
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                
+                try {
+                    if (document.execCommand('copy')) {
+                        showSuccess();
+                    } else {
+                        showError();
+                    }
+                } catch (err) {
+                    showError();
+                }
+                
+                document.body.removeChild(textArea);
+            }
         }
 
         // Fetch status every 3 seconds
