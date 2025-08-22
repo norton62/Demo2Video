@@ -1,12 +1,13 @@
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for, flash
+from flask import Flask, render_template, request, jsonify, redirect, url_for, flash
 import queue
 import logging
 from collections import deque
 import os
 import json
+from threading import Lock
 
 app = Flask(__name__)
-app.secret_key = os.urandom(24)
+# The secret key is no longer needed as sessions are removed.
 
 log = logging.getLogger('werkzeug')
 log.setLevel(logging.ERROR)
@@ -21,58 +22,43 @@ current_status = {
 
 RESULTS_FILE = 'results.json'
 completed_jobs = deque(maxlen=50) 
+results_lock = Lock()
 
 def save_results():
-    try:
-        with open(RESULTS_FILE, 'w') as f:
-            json.dump(list(completed_jobs), f, indent=4)
-        logging.info(f"Successfully saved {len(completed_jobs)} results to {RESULTS_FILE}")
-    except Exception as e:
-        logging.error(f"Failed to save results to {RESULTS_FILE}: {e}")
+    with results_lock:
+        try:
+            with open(RESULTS_FILE, 'w') as f:
+                json.dump(list(completed_jobs), f, indent=4)
+            logging.info(f"Successfully saved {len(completed_jobs)} results to {RESULTS_FILE}")
+        except Exception as e:
+            logging.error(f"Failed to save results to {RESULTS_FILE}: {e}")
 
 def load_results():
-    if os.path.exists(RESULTS_FILE):
-        with open(RESULTS_FILE, 'r') as f:
-            try:
-                results_list = json.load(f)
-                completed_jobs.extend(results_list)
-                logging.info(f"Loaded {len(completed_jobs)} previous results from {RESULTS_FILE}")
-            except json.JSONDecodeError:
-                logging.error(f"Could not decode JSON from {RESULTS_FILE}. Starting with empty results.")
-    else:
-        logging.info(f"{RESULTS_FILE} not found. Starting with empty results.")
-
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        password_attempt = request.form.get('password')
-        if password_attempt == app.config['PASSWORD']:
-            session['logged_in'] = True
-            flash('Login successful!', 'success')
-            return redirect(url_for('index'))
+    with results_lock:
+        if os.path.exists(RESULTS_FILE):
+            with open(RESULTS_FILE, 'r') as f:
+                try:
+                    content = f.read()
+                    if content:
+                        results_list = json.loads(content)
+                        completed_jobs.extend(results_list)
+                        logging.info(f"Loaded {len(completed_jobs)} previous results from {RESULTS_FILE}")
+                except json.JSONDecodeError:
+                    logging.error(f"Could not decode JSON from {RESULTS_FILE}. Starting with empty results.")
         else:
-            flash('Incorrect password.', 'error')
-    return render_template('login.html')
+            logging.info(f"{RESULTS_FILE} not found. Starting with empty results.")
 
-@app.route('/logout')
-def logout():
-    session.pop('logged_in', None)
-    flash('You have been logged out.', 'success')
-    return redirect(url_for('login'))
+# The /login and /logout routes are no longer needed.
 
 @app.route('/')
 def index():
-    if not session.get('logged_in'):
-        return redirect(url_for('login'))
+    # No login check is needed.
     return render_template('index.html')
 
 @app.route('/add_demo', methods=['POST'])
 def add_demo():
-    if not session.get('logged_in'):
-        return jsonify({"success": False, "message": "Unauthorized"}), 401
-        
+    # No login check is needed.
     share_code = request.form.get('share_code')
-    # UPDATED: Get suspect_steam_id instead of suspect_name
     suspect_steam_id = request.form.get('suspect_steam_id')
     submitted_by = request.form.get('submitted_by')
 
@@ -93,12 +79,10 @@ def run_hyperlink():
     Example URL: http://localhost:5001/run?demo=CSGO-87xm7-dtW7U-s9Ubx-sRc3X-BZAYN&steam64=76561198872751464&name=Soul
     Or with demo URL: http://localhost:5001/run?demo=http://replay129.valve.net/730/003767354559668683295_1542993054.dem.bz2&steam64=76561198872751464&name=Soul
     """
-    # Get parameters from URL
     demo = request.args.get('demo')
     steam64 = request.args.get('steam64')
     name = request.args.get('name')
     
-    # Validate required parameters
     if not all([demo, steam64, name]):
         missing_params = []
         if not demo: missing_params.append('demo')
@@ -106,15 +90,13 @@ def run_hyperlink():
         if not name: missing_params.append('name')
         
         error_msg = f"Missing required parameters: {', '.join(missing_params)}"
-        flash(error_msg, 'error')
+        flash(error_msg, 'error') # Note: flash won't display without a secret key, but we leave it for now.
         return redirect(url_for('index'))
     
-    # Validate Steam64 ID format (should be numeric and 17 digits)
     if not steam64.isdigit() or len(steam64) != 17:
         flash('Invalid Steam64 ID format. Must be 17 digits.', 'error')
         return redirect(url_for('index'))
     
-    # Create job and add to queue
     job = {
         "share_code": demo,
         "suspect_steam_id": steam64,
@@ -133,9 +115,7 @@ def run_hyperlink():
 
 @app.route('/status')
 def status():
-    if not session.get('logged_in'):
-        return jsonify({"success": False, "message": "Unauthorized"}), 401
-
+    # No login check is needed.
     queued_jobs = list(demo_queue.queue)
     results = list(completed_jobs) 
     return jsonify({
@@ -144,7 +124,7 @@ def status():
         "results": results 
     })
 
-def run_web_server(password):
+def run_web_server(): # Password parameter is removed
     load_results()
-    app.config['PASSWORD'] = password
+    # No need to set the password in the app config.
     app.run(host='0.0.0.0', port=5001)

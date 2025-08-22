@@ -101,7 +101,6 @@ def processing_worker():
 
                 update_status("Recording", "Waiting for highlights to finish...", suspect_steam_id)
                 
-                # UPDATED: Called the correct function name from the CLI handler.
                 if not csdm_cli_handler.wait_for_cs2_to_close():
                     raise RuntimeError("Timed out waiting for CS2 process to close.")
 
@@ -169,17 +168,11 @@ def processing_worker():
 if __name__ == '__main__':
     setup_logging()
     
-    config = configparser.ConfigParser()
-    config.read('config.ini')
-    try:
-        password = config['Web']['password']
-    except KeyError:
-        logging.error("Password not found in config.ini.")
-        sys.exit(1)
-
+    # Start the processing worker in a separate thread
     worker_thread = threading.Thread(target=processing_worker, name="ProcessingWorker")
     worker_thread.daemon = True
     worker_thread.start()
 
+    # Start the Flask web server in the main thread
     logging.info("Starting web server on http://localhost:5001")
-    run_web_server(password=password)
+    run_web_server()

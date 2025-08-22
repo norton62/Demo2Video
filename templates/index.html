@@ -10,16 +10,7 @@
     <div class="container">
         <h1>CS Demo Processor</h1>
 
-        <!-- Flash Messages -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                <div class="flash-messages">
-                    {% for category, message in messages %}
-                        <div class="flash-message {{ category }}">{{ message }}</div>
-                    {% endfor %}
-                </div>
-            {% endif %}
-        {% endwith %}
+        <!-- Flash Messages section has been removed -->
 
         <div class="status-box">
             <h2>Current Status: <span id="current-status">Idle</span></h2>
@@ -32,7 +23,6 @@
                 <h2>Add New Demo to Queue</h2>
                 <form id="demo-form">
                     <input type="text" id="share_code" name="share_code" placeholder="Enter Steam Run Link or Share Code" required>
-                    <!-- UPDATED: Changed from suspect_name to suspect_steam_id -->
                     <input type="text" id="suspect_steam_id" name="suspect_steam_id" placeholder="Enter Suspect's Steam64 ID" required>
                     <input type="text" id="submitted_by" name="submitted_by" placeholder="Your Name" required>
                     <button type="submit">Add to Queue</button>
@@ -53,7 +43,6 @@
             <table id="results-table">
                 <thead>
                     <tr>
-                        <!-- UPDATED: Changed header to Steam64 ID -->
                         <th>Suspect Steam64 ID</th>
                         <th>Share Code or Demo Link</th>
                         <th>Submitted By</th>
@@ -106,7 +95,6 @@
                         const cell3 = row.insertCell(2);
                         const cell4 = row.insertCell(3);
 
-                        // UPDATED: Use suspect_steam_id
                         cell1.textContent = result.suspect_steam_id;
                         
                         // Handle long demo URLs with truncation and tooltip
