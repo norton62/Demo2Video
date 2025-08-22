@@ -3,16 +3,15 @@
 # Example: Z:\Github\CSDM
 csdm_project_path = 
 
-# The folder where downloaded demos and final recorded videos will be stored.
+# The folder where downloaded demo files (.dem) will be stored.
+# Example: Z:\Github\Demo2Video\demos
+demos_folder = C:\Program Files (x86)\Steam\steamapps\common\Counter-Strike Global Offensive\game\csgo\replays
+
+# The folder where OBS saves recorded videos (.mp4).
 # IMPORTANT: This path MUST match the "Recording Path" you set in OBS.
 # In OBS, go to File -> Settings -> Output -> Recording -> Recording Path
 # Example: Z:\Github\Demo2Video\videos
 output_folder = 
-
-# The folder where final processed videos will be moved for local storage.
-# Only used when video_generate_only is enabled or youtube_upload is disabled.
-# Example: Z:\Github\Demo2Video\final_videos
-final_videos_folder = 
 
 [OBS]
 # The host and port for the obs-websocket plugin.
@@ -28,5 +27,5 @@ video_generate_only = true
 
 [Web]
 # Set a password to protect the web interface.
-# Anyone accessing http://your-ip:5000 will need this password.
+# Anyone accessing http://your-ip:5001 will need this password.
 password = your_secret_password

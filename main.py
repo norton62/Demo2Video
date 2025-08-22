@@ -50,42 +50,34 @@ def extract_demo_name_from_url(demo_url_or_code):
         # Return share code as-is
         return demo_url_or_code
 
-def generate_unique_filename(final_videos_folder, steam64_id, demo_name):
-    """Generate a unique filename for the final video."""
-    base_name = f"{steam64_id} - {demo_name}"
-    file_path = os.path.join(final_videos_folder, f"{base_name}.mp4")
-    
-    # If file doesn't exist, return the base name
-    if not os.path.exists(file_path):
-        return f"{base_name}.mp4"
-    
-    # Find next available number
-    counter = 2
-    while True:
-        numbered_name = f"{base_name} - {counter:03d}.mp4"
-        numbered_path = os.path.join(final_videos_folder, numbered_name)
-        if not os.path.exists(numbered_path):
-            return numbered_name
-        counter += 1
-
-def move_video_to_final_folder(source_file, final_videos_folder, steam64_id, demo_name):
-    """Move video to final folder with proper naming."""
+def rename_video_with_suspect_info(source_file, steam64_id, demo_name):
+    """Rename video file in place with suspect and demo information."""
     try:
-        # Ensure final videos folder exists
-        os.makedirs(final_videos_folder, exist_ok=True)
+        source_dir = os.path.dirname(source_file)
+        base_name = f"{steam64_id} - {demo_name}"
+        new_filename = f"{base_name}.mp4"
+        new_path = os.path.join(source_dir, new_filename)
         
-        # Generate unique filename
-        final_filename = generate_unique_filename(final_videos_folder, steam64_id, demo_name)
-        final_path = os.path.join(final_videos_folder, final_filename)
+        # If file with target name doesn't exist, rename directly
+        if not os.path.exists(new_path):
+            os.rename(source_file, new_path)
+            logging.info(f"Video renamed to: {new_path}")
+            return new_path
         
-        # Move the file
-        shutil.move(source_file, final_path)
-        logging.info(f"Video moved to: {final_path}")
-        return final_path
+        # Find next available number if file exists
+        counter = 2
+        while True:
+            numbered_name = f"{base_name} - {counter:03d}.mp4"
+            numbered_path = os.path.join(source_dir, numbered_name)
+            if not os.path.exists(numbered_path):
+                os.rename(source_file, numbered_path)
+                logging.info(f"Video renamed to: {numbered_path}")
+                return numbered_path
+            counter += 1
         
     except Exception as e:
-        logging.error(f"Failed to move video to final folder: {e}")
-        return None
+        logging.error(f"Failed to rename video file: {e}")
+        return source_file  # Return original path if rename fails
 
 def processing_worker():
     """The main worker thread that processes demos from the queue."""
@@ -95,8 +87,8 @@ def processing_worker():
     config.read('config.ini')
     try:
         csdm_project_path = config['Paths']['csdm_project_path']
+        demos_folder = config['Paths']['demos_folder']
         output_folder = config['Paths']['output_folder']
-        final_videos_folder = config['Paths'].get('final_videos_folder', '')
         obs_host = config['OBS']['host']
         obs_port = int(config['OBS']['port'])
         video_generate_only = config['Video'].getboolean('video_generate_only', True)
@@ -126,7 +118,7 @@ def processing_worker():
                 # Check if input is a direct demo URL or a share code
                 if demo_downloader.is_demo_url(user_input):
                     update_status("Processing", "Direct demo URL detected, downloading...", suspect_steam_id)
-                    demo_path = demo_downloader.download_demo(user_input, output_folder)
+                    demo_path = demo_downloader.download_demo(user_input, demos_folder)
                 else:
                     update_status("Processing", "Parsing share code...", suspect_steam_id)
                     share_code = demo_downloader.parse_share_code(user_input)
@@ -134,7 +126,7 @@ def processing_worker():
                         raise ValueError("Invalid share code provided.")
                     
                     update_status("Processing", f"Downloading demo for {share_code}...", suspect_steam_id)
-                    demo_path = demo_downloader.download_demo(share_code, output_folder)
+                    demo_path = demo_downloader.download_demo(share_code, demos_folder)
                 if not demo_path:
                     raise RuntimeError("Failed to download demo.")
 
@@ -208,18 +200,14 @@ def processing_worker():
                                 task_status = "Upload Failed"
                                 raise RuntimeError("Upload failed to return a URL.")
                         else:
-                            # Save locally
-                            update_status("Processing", "Moving video to final folder...", suspect_steam_id)
+                            # Save locally with proper naming
+                            update_status("Processing", "Renaming video file...", suspect_steam_id)
                             demo_name = extract_demo_name_from_url(user_input)
-                            final_video_path = move_video_to_final_folder(latest_file, final_videos_folder, suspect_steam_id, demo_name)
+                            final_video_path = rename_video_with_suspect_info(latest_file, suspect_steam_id, demo_name)
                             
-                            if final_video_path:
-                                task_status = "Saved Locally"
-                                youtube_link = f"file://{final_video_path}"  # Local file reference
-                                update_status("Finished", "Video saved locally!", suspect_steam_id)
-                            else:
-                                task_status = "Failed to Save"
-                                raise RuntimeError("Failed to move video to final folder.")
+                            task_status = "Saved Locally"
+                            youtube_link = f"file://{final_video_path}"  # Local file reference
+                            update_status("Finished", "Video saved locally!", suspect_steam_id)
 
                     except Exception as e:
                         if youtube_upload:
