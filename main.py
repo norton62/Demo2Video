@@ -5,6 +5,8 @@ import logging
 import time
 import threading
 import pyautogui
+import shutil
+import re
 
 import csdm_cli_handler
 import youtube_uploader
@@ -33,6 +35,50 @@ def update_status(status, step, suspect=""):
     current_status["step"] = step
     current_status["suspect"] = suspect
 
+def extract_demo_name_from_url(demo_url_or_code):
+    """Extract demo filename from URL or return share code."""
+    if demo_downloader.is_demo_url(demo_url_or_code):
+        # Extract filename from URL (e.g., "003767976009224159760_0501691362.dem.bz2")
+        filename = demo_url_or_code.split('/')[-1]
+        if filename.endswith('.dem.bz2'):
+            return filename[:-8]  # Remove ".dem.bz2"
+        elif filename.endswith('.dem'):
+            return filename[:-4]  # Remove ".dem"
+        else:
+            return filename
+    else:
+        # Return share code as-is
+        return demo_url_or_code
+
+def rename_video_with_suspect_info(source_file, steam64_id, demo_name):
+    """Rename video file in place with suspect and demo information."""
+    try:
+        source_dir = os.path.dirname(source_file)
+        base_name = f"{steam64_id} - {demo_name}"
+        new_filename = f"{base_name}.mp4"
+        new_path = os.path.join(source_dir, new_filename)
+        
+        # If file with target name doesn't exist, rename directly
+        if not os.path.exists(new_path):
+            os.rename(source_file, new_path)
+            logging.info(f"Video renamed to: {new_path}")
+            return new_path
+        
+        # Find next available number if file exists
+        counter = 2
+        while True:
+            numbered_name = f"{base_name} - {counter:03d}.mp4"
+            numbered_path = os.path.join(source_dir, numbered_name)
+            if not os.path.exists(numbered_path):
+                os.rename(source_file, numbered_path)
+                logging.info(f"Video renamed to: {numbered_path}")
+                return numbered_path
+            counter += 1
+        
+    except Exception as e:
+        logging.error(f"Failed to rename video file: {e}")
+        return source_file  # Return original path if rename fails
+
 def processing_worker():
     """The main worker thread that processes demos from the queue."""
     logging.info("Processing worker started.")
@@ -41,9 +87,11 @@ def processing_worker():
     config.read('config.ini')
     try:
         csdm_project_path = config['Paths']['csdm_project_path']
+        demos_folder = config['Paths']['demos_folder']
         output_folder = config['Paths']['output_folder']
         obs_host = config['OBS']['host']
         obs_port = int(config['OBS']['port'])
+        video_generate_only = config['Video'].getboolean('video_generate_only', True)
     except KeyError as e:
         logging.error(f"Configuration error: Missing key {e} in config.ini.")
         return
@@ -52,20 +100,25 @@ def processing_worker():
         try:
             job = demo_queue.get()
             suspect_steam_id = job['suspect_steam_id']
+            user_input = job['share_code']
+            
+            # Check if YouTube upload is requested (overrides default setting)
+            youtube_upload = job.get('youtube_upload', not video_generate_only)
+            
             update_status("Processing", "Starting new job...", suspect_steam_id)
 
             workflow_successful = False
             youtube_link = None
+            task_status = None
+            final_video_path = None
             obs = OBSRecorder(host=obs_host, port=obs_port)
 
             try:
                 # Step 1: Download Demo
-                user_input = job['share_code']
-                
                 # Check if input is a direct demo URL or a share code
                 if demo_downloader.is_demo_url(user_input):
                     update_status("Processing", "Direct demo URL detected, downloading...", suspect_steam_id)
-                    demo_path = demo_downloader.download_demo(user_input, output_folder)
+                    demo_path = demo_downloader.download_demo(user_input, demos_folder)
                 else:
                     update_status("Processing", "Parsing share code...", suspect_steam_id)
                     share_code = demo_downloader.parse_share_code(user_input)
@@ -73,7 +126,7 @@ def processing_worker():
                         raise ValueError("Invalid share code provided.")
                     
                     update_status("Processing", f"Downloading demo for {share_code}...", suspect_steam_id)
-                    demo_path = demo_downloader.download_demo(share_code, output_folder)
+                    demo_path = demo_downloader.download_demo(share_code, demos_folder)
                 if not demo_path:
                     raise RuntimeError("Failed to download demo.")
 
@@ -122,9 +175,9 @@ def processing_worker():
                 # This is now just a backup in case the process hangs.
                 csdm_cli_handler.force_close_cs2()
 
-                # --- Upload Step ---
+                # --- Upload/Save Step ---
                 if workflow_successful:
-                    update_status("Processing", "Finding latest recording for upload...", suspect_steam_id)
+                    update_status("Processing", "Finding latest recording...", suspect_steam_id)
                     try:
                         files = [os.path.join(output_folder, f) for f in os.listdir(output_folder) if f.endswith('.mp4')]
                         if not files:
@@ -133,26 +186,49 @@ def processing_worker():
                         latest_file = max(files, key=os.path.getctime)
                         logging.info(f"Latest recording found: {latest_file}")
                         
-                        update_status("Uploading", f"Uploading {os.path.basename(latest_file)}...", suspect_steam_id)
-                        video_title = f"Suspected Cheater: {suspect_steam_id} - Highlights"
-                        youtube_link = youtube_uploader.upload_video(latest_file, video_title)
-                        
-                        if youtube_link:
-                            update_status("Finished", "Upload complete!", suspect_steam_id)
+                        if youtube_upload:
+                            # Upload to YouTube
+                            update_status("Uploading", f"Uploading {os.path.basename(latest_file)}...", suspect_steam_id)
+                            video_title = f"Suspected Cheater: {suspect_steam_id} - Highlights"
+                            youtube_link = youtube_uploader.upload_video(latest_file, video_title)
+                            
+                            if youtube_link:
+                                task_status = "Uploaded"
+                                update_status("Finished", "Upload complete!", suspect_steam_id)
+                            else:
+                                task_status = "Upload Failed"
+                                raise RuntimeError("Upload failed to return a URL.")
                         else:
-                            raise RuntimeError("Upload failed to return a URL.")
+                            # Save locally with proper naming
+                            update_status("Processing", "Renaming video file...", suspect_steam_id)
+                            demo_name = extract_demo_name_from_url(user_input)
+                            final_video_path = rename_video_with_suspect_info(latest_file, suspect_steam_id, demo_name)
+                            
+                            task_status = "Saved Locally"
+                            youtube_link = f"file://{final_video_path}"  # Local file reference
+                            update_status("Finished", "Video saved locally!", suspect_steam_id)
 
                     except Exception as e:
-                        logging.error(f"Failed to find or upload the recording: {e}")
-                        update_status("Error", f"Upload failed: {e}", suspect_steam_id)
+                        if youtube_upload:
+                            logging.error(f"Failed to upload the recording: {e}")
+                            task_status = "Upload Failed"
+                            update_status("Error", f"Upload failed: {e}", suspect_steam_id)
+                        else:
+                            logging.error(f"Failed to save the recording: {e}")
+                            task_status = "Failed to Save"
+                            update_status("Error", f"Save failed: {e}", suspect_steam_id)
                 else:
-                    logging.warning("Workflow did not complete successfully. Skipping upload.")
+                    logging.warning("Workflow did not complete successfully. Skipping upload/save.")
+                    task_status = "Processing Failed"
 
             # Add the completed job to the results list
             completed_jobs.append({
                 "suspect_steam_id": suspect_steam_id,
                 "share_code": job['share_code'],
-                "youtube_link": youtube_link or "Upload Failed",
+                "youtube_link": youtube_link or "Processing Failed",
+                "task_status": task_status or "Processing Failed",
+                "final_video_path": final_video_path,
+                "youtube_upload": youtube_upload,
                 "submitted_by": job.get('submitted_by', 'N/A')
             })
             save_results()

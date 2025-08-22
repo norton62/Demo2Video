@@ -34,7 +34,7 @@ def run_ffmpeg_test():
     
     try:
         ffmpeg_path = config['Paths']['ffmpeg_executable']
-        output_folder = config['Paths']['output_folder']
+        demos_folder = config['Paths']['demos_folder']
         screen_width = int(config['Recording']['screen_width'])
         screen_height = int(config['Recording']['screen_height'])
         offset_x = int(config['Recording']['offset_x'])
@@ -47,7 +47,7 @@ def run_ffmpeg_test():
     # 2. Define test parameters
     test_duration = 10  # seconds
     test_video_filename = "ffmpeg_test_output.mp4"
-    test_video_filepath = os.path.join(output_folder, test_video_filename)
+    test_video_filepath = os.path.join(demos_folder, test_video_filename)
 
     logging.info(f"This test will record your screen and audio for {test_duration} seconds.")
     logging.info(f"Output file will be saved to: {test_video_filepath}")
