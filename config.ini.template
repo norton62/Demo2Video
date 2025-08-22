@@ -9,13 +9,24 @@ csdm_project_path =
 # Example: Z:\Github\Demo2Video\videos
 output_folder = 
 
+# The folder where final processed videos will be moved for local storage.
+# Only used when video_generate_only is enabled or youtube_upload is disabled.
+# Example: Z:\Github\Demo2Video\final_videos
+final_videos_folder = 
+
 [OBS]
 # The host and port for the obs-websocket plugin.
 # These should match the settings in OBS under Tools -> obs-websocket Settings.
 host = localhost
 port = 4455
 
+[Video]
+# Video Generate Only mode - when enabled, videos are saved locally instead of uploaded to YouTube
+# Set to true to enable local video saving by default, false to upload to YouTube by default
+# This can be overridden per-job using the youtube_upload URL parameter
+video_generate_only = true
+
 [Web]
 # Set a password to protect the web interface.
-# Anyone accessing http://your-ip:5001 will need this password.
+# Anyone accessing http://your-ip:5000 will need this password.
 password = your_secret_password

@@ -57,13 +57,27 @@
                         <th>Suspect Steam64 ID</th>
                         <th>Share Code or Demo Link</th>
                         <th>Submitted By</th>
-                        <th>YouTube Link</th>
+                        <th>Task Status</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="results-body">
                     <!-- Results will be added here -->
                 </tbody>
             </table>
+        </div>
+    </div>
+
+    <!-- Video Output Modal -->
+    <div id="video-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title">Video Output</h3>
+                <span class="close" onclick="closeModal()">&times;</span>
+            </div>
+            <div id="modal-video-content" class="modal-body">
+                <!-- Video content will be inserted here -->
+            </div>
         </div>
     </div>
 
@@ -105,6 +119,7 @@
                         const cell2 = row.insertCell(1);
                         const cell3 = row.insertCell(2);
                         const cell4 = row.insertCell(3);
+                        const cell5 = row.insertCell(4);
 
                         // UPDATED: Use suspect_steam_id
                         cell1.textContent = result.suspect_steam_id;
@@ -124,24 +139,28 @@
                         
                         cell3.textContent = result.submitted_by;
                         
-                        const link = document.createElement('a');
-                        link.href = result.youtube_link;
-                        link.textContent = 'Watch Video';
-                        link.target = '_blank';
+                        // Task Status cell
+                        const taskStatus = result.task_status || 'Unknown';
+                        cell4.textContent = taskStatus;
                         
-                        if (result.youtube_link === 'Upload Failed') {
-                            link.href = '#';
-                            link.textContent = 'Upload Failed';
-                            link.style.color = '#cf6679';
-                            link.style.pointerEvents = 'none';
+                        // Set color based on status
+                        if (taskStatus === 'Uploaded' || taskStatus === 'Saved Locally') {
+                            cell4.style.color = '#03dac6'; // Success color
+                        } else if (taskStatus.includes('Failed')) {
+                            cell4.style.color = '#cf6679'; // Error color
                         }
-
-                        cell4.appendChild(link);
+                        
+                        // Actions cell
+                        const showButton = document.createElement('button');
+                        showButton.textContent = 'Show Output';
+                        showButton.className = 'show-output-btn';
+                        showButton.onclick = () => showVideoOutput(result);
+                        cell5.appendChild(showButton);
                     });
                 } else {
                     const row = resultsBody.insertRow(0);
                     const cell = row.insertCell(0);
-                    cell.colSpan = 4;
+                    cell.colSpan = 5;
                     cell.textContent = 'No completed jobs yet.';
                     cell.style.textAlign = 'center';
                 }
@@ -178,6 +197,67 @@
             // Update status immediately after submission
             updateStatus();
         });
+
+        // Function to show video output in a modal
+        function showVideoOutput(result) {
+            const modal = document.getElementById('video-modal');
+            const modalContent = document.getElementById('modal-video-content');
+            const modalTitle = document.getElementById('modal-title');
+            
+            modalTitle.textContent = `Video Output - ${result.suspect_steam_id}`;
+            
+            if (result.youtube_upload && result.task_status === 'Uploaded') {
+                // YouTube video
+                const videoId = extractYouTubeVideoId(result.youtube_link);
+                if (videoId) {
+                    modalContent.innerHTML = `
+                        <iframe width="560" height="315" 
+                                src="https://www.youtube.com/embed/${videoId}" 
+                                frameborder="0" 
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                allowfullscreen>
+                        </iframe>
+                        <p><a href="${result.youtube_link}" target="_blank">Open in YouTube</a></p>
+                    `;
+                } else {
+                    modalContent.innerHTML = `<p>YouTube video available: <a href="${result.youtube_link}" target="_blank">Watch on YouTube</a></p>`;
+                }
+            } else if (result.task_status === 'Saved Locally') {
+                // Local video
+                modalContent.innerHTML = `
+                    <p><strong>Video saved locally:</strong></p>
+                    <p>${result.final_video_path || 'Path not available'}</p>
+                    <p><em>Note: Local videos cannot be embedded in the web interface. Please access the file directly from your file system.</em></p>
+                `;
+            } else {
+                // Error or other status
+                modalContent.innerHTML = `
+                    <p><strong>Status:</strong> ${result.task_status}</p>
+                    <p>No video output available.</p>
+                `;
+            }
+            
+            modal.style.display = 'block';
+        }
+        
+        // Function to extract YouTube video ID from URL
+        function extractYouTubeVideoId(url) {
+            const regex = /(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/;
+            const match = url.match(regex);
+            return match ? match[1] : null;
+        }
+        
+        // Close modal when clicking outside or on close button
+        window.onclick = function(event) {
+            const modal = document.getElementById('video-modal');
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        }
+        
+        function closeModal() {
+            document.getElementById('video-modal').style.display = 'none';
+        }
 
         // Fetch status every 3 seconds
         setInterval(updateStatus, 3000);

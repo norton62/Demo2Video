@@ -97,6 +97,7 @@ def run_hyperlink():
     demo = request.args.get('demo')
     steam64 = request.args.get('steam64')
     name = request.args.get('name')
+    youtube_upload = request.args.get('youtube_upload', '').lower() == 'true'
     
     # Validate required parameters
     if not all([demo, steam64, name]):
@@ -118,7 +119,8 @@ def run_hyperlink():
     job = {
         "share_code": demo,
         "suspect_steam_id": steam64,
-        "submitted_by": name
+        "submitted_by": name,
+        "youtube_upload": youtube_upload
     }
     
     try:
