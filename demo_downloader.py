@@ -58,12 +58,28 @@ def download_demo(share_code, download_folder):
         logging.error("Failed to get a download URL from all available APIs.")
         return None
 
-    # Download the demo file
+    # Extract original filename from download URL
     try:
-        logging.info(f"Downloading demo from: {download_url}")
+        # Extract filename from URL (e.g., "003768214888862712028_0847912006.dem.bz2")
+        original_filename = download_url.split('/')[-1]
+        if original_filename.endswith('.dem.bz2'):
+            # Remove .bz2 extension to get the .dem filename
+            dem_filename_only = original_filename[:-4]  # Remove ".bz2"
+        else:
+            # Fallback to share code if we can't parse the original filename
+            logging.warning(f"Could not parse original filename from URL: {download_url}")
+            dem_filename_only = f"{share_code}.dem"
         
-        bz2_filename = os.path.join(download_folder, f"{share_code}.dem.bz2")
-        dem_filename = os.path.join(download_folder, f"{share_code}.dem")
+        bz2_filename = os.path.join(download_folder, original_filename)
+        dem_filename = os.path.join(download_folder, dem_filename_only)
+        
+        # Check if demo file already exists
+        if os.path.exists(dem_filename):
+            logging.info(f"Demo file already exists: {dem_filename}")
+            return dem_filename
+        
+        logging.info(f"Downloading demo from: {download_url}")
+        logging.info(f"Original filename: {dem_filename_only}")
 
         with requests.get(download_url, stream=True) as r:
             r.raise_for_status()
