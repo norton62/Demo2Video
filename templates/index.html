@@ -10,6 +10,17 @@
     <div class="container">
         <h1>CS Demo Processor</h1>
 
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                        <div class="flash-message {{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
         <div class="status-box">
             <h2>Current Status: <span id="current-status">Idle</span></h2>
             <p><strong>Suspect:</strong> <span id="current-suspect">N/A</span></p>

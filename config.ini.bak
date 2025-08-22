@@ -25,5 +25,5 @@ port = 4455
 
 [Web]
 # Set a password to protect the web interface.
-# Anyone accessing http://your-ip:5000 will need this password.
+# Anyone accessing http://your-ip:5001 will need this password.
 password = CSWatch
