@@ -82,6 +82,6 @@ To upload videos, you need Google API credentials.
         python main.py
         ```
 4.  **Access the Web Interface**:
-    * Open your web browser and go to `http://localhost:5000`.
+    * Open your web browser and go to `http://localhost:5001`.
     * Log in with the password you set in `config.ini`.
     * You can now start adding demos to the queue.

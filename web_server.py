@@ -85,6 +85,52 @@ def add_demo():
     
     return jsonify({"success": True, "message": "Demo added to the queue."})
 
+@app.route('/run')
+def run_hyperlink():
+    """
+    Hyperlink runner that accepts URL parameters and automatically adds a job to the queue.
+    
+    Example URL: http://localhost:5001/run?demo=CSGO-87xm7-dtW7U-s9Ubx-sRc3X-BZAYN&steam64=76561198872751464&name=Soul
+    Or with demo URL: http://localhost:5001/run?demo=http://replay129.valve.net/730/003767354559668683295_1542993054.dem.bz2&steam64=76561198872751464&name=Soul
+    """
+    # Get parameters from URL
+    demo = request.args.get('demo')
+    steam64 = request.args.get('steam64')
+    name = request.args.get('name')
+    
+    # Validate required parameters
+    if not all([demo, steam64, name]):
+        missing_params = []
+        if not demo: missing_params.append('demo')
+        if not steam64: missing_params.append('steam64')
+        if not name: missing_params.append('name')
+        
+        error_msg = f"Missing required parameters: {', '.join(missing_params)}"
+        flash(error_msg, 'error')
+        return redirect(url_for('index'))
+    
+    # Validate Steam64 ID format (should be numeric and 17 digits)
+    if not steam64.isdigit() or len(steam64) != 17:
+        flash('Invalid Steam64 ID format. Must be 17 digits.', 'error')
+        return redirect(url_for('index'))
+    
+    # Create job and add to queue
+    job = {
+        "share_code": demo,
+        "suspect_steam_id": steam64,
+        "submitted_by": name
+    }
+    
+    try:
+        demo_queue.put(job)
+        logging.info(f"Added new job to queue via hyperlink: {job}")
+        flash(f'Demo successfully added to queue for suspect {steam64} (submitted by {name})', 'success')
+    except Exception as e:
+        logging.error(f"Failed to add job via hyperlink: {e}")
+        flash('Failed to add demo to queue. Please try again.', 'error')
+    
+    return redirect(url_for('index'))
+
 @app.route('/status')
 def status():
     if not session.get('logged_in'):
@@ -101,4 +147,4 @@ def status():
 def run_web_server(password):
     load_results()
     app.config['PASSWORD'] = password
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=5001)

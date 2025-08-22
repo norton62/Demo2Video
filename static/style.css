@@ -32,6 +32,31 @@ h2 {
     margin-bottom: 15px;
 }
 
+/* Flash Messages */
+.flash-messages {
+    margin-bottom: 25px;
+}
+
+.flash-message {
+    padding: 12px 16px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    font-weight: bold;
+    border-left: 4px solid;
+}
+
+.flash-message.success {
+    background-color: rgba(3, 218, 198, 0.1);
+    color: #03dac6;
+    border-left-color: #03dac6;
+}
+
+.flash-message.error {
+    background-color: rgba(207, 102, 121, 0.1);
+    color: #cf6679;
+    border-left-color: #cf6679;
+}
+
 .status-box, .form-container, .queue-container, .results-container {
     background-color: #2a2a2a;
     padding: 20px;

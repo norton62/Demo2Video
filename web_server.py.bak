@@ -101,4 +101,4 @@ def status():
 def run_web_server(password):
     load_results()
     app.config['PASSWORD'] = password
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=5001)
