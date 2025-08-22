@@ -113,16 +113,65 @@ button:hover {
 .results-container table {
     width: 100%;
     border-collapse: collapse;
+    table-layout: fixed; /* Fixed layout for better column control */
 }
 
 .results-container th, .results-container td {
     padding: 12px;
     text-align: left;
     border-bottom: 1px solid #444;
+    overflow: hidden;
 }
 
 .results-container th {
     background-color: #333;
+}
+
+/* Column width distribution */
+.results-container th:nth-child(1), .results-container td:nth-child(1) {
+    width: 20%; /* Steam ID */
+}
+
+.results-container th:nth-child(2), .results-container td:nth-child(2) {
+    width: 40%; /* Share Code/Demo Link */
+    word-break: break-all;
+    overflow-wrap: break-word;
+}
+
+.results-container th:nth-child(3), .results-container td:nth-child(3) {
+    width: 20%; /* Submitted By */
+}
+
+.results-container th:nth-child(4), .results-container td:nth-child(4) {
+    width: 20%; /* YouTube Link */
+}
+
+/* Truncated text with tooltip */
+.truncated-text {
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: help;
+    position: relative;
+}
+
+.truncated-text:hover::after {
+    content: attr(data-full-text);
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    background-color: #333;
+    color: #e0e0e0;
+    padding: 8px;
+    border-radius: 4px;
+    white-space: normal;
+    word-break: break-all;
+    max-width: 300px;
+    z-index: 1000;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+    font-size: 12px;
+    line-height: 1.4;
 }
 
 .results-container a {

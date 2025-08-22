@@ -60,13 +60,20 @@ def processing_worker():
 
             try:
                 # Step 1: Download Demo
-                update_status("Processing", "Parsing share code...", suspect_steam_id)
-                share_code = demo_downloader.parse_share_code(job['share_code'])
-                if not share_code:
-                    raise ValueError("Invalid share code provided.")
+                user_input = job['share_code']
                 
-                update_status("Processing", f"Downloading demo for {share_code}...", suspect_steam_id)
-                demo_path = demo_downloader.download_demo(share_code, output_folder)
+                # Check if input is a direct demo URL or a share code
+                if demo_downloader.is_demo_url(user_input):
+                    update_status("Processing", "Direct demo URL detected, downloading...", suspect_steam_id)
+                    demo_path = demo_downloader.download_demo(user_input, output_folder)
+                else:
+                    update_status("Processing", "Parsing share code...", suspect_steam_id)
+                    share_code = demo_downloader.parse_share_code(user_input)
+                    if not share_code:
+                        raise ValueError("Invalid share code provided.")
+                    
+                    update_status("Processing", f"Downloading demo for {share_code}...", suspect_steam_id)
+                    demo_path = demo_downloader.download_demo(share_code, output_folder)
                 if not demo_path:
                     raise RuntimeError("Failed to download demo.")
 

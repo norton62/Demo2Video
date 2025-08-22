@@ -44,7 +44,7 @@
                     <tr>
                         <!-- UPDATED: Changed header to Steam64 ID -->
                         <th>Suspect Steam64 ID</th>
-                        <th>Share Code</th>
+                        <th>Share Code or Demo Link</th>
                         <th>Submitted By</th>
                         <th>YouTube Link</th>
                     </tr>
@@ -97,7 +97,20 @@
 
                         // UPDATED: Use suspect_steam_id
                         cell1.textContent = result.suspect_steam_id;
-                        cell2.textContent = result.share_code;
+                        
+                        // Handle long demo URLs with truncation and tooltip
+                        const shareCodeText = result.share_code;
+                        if (shareCodeText.length > 50) {
+                            const truncatedSpan = document.createElement('span');
+                            truncatedSpan.className = 'truncated-text';
+                            truncatedSpan.textContent = shareCodeText.substring(0, 47) + '...';
+                            truncatedSpan.setAttribute('data-full-text', shareCodeText);
+                            truncatedSpan.title = shareCodeText; // Fallback tooltip
+                            cell2.appendChild(truncatedSpan);
+                        } else {
+                            cell2.textContent = shareCodeText;
+                        }
+                        
                         cell3.textContent = result.submitted_by;
                         
                         const link = document.createElement('a');
