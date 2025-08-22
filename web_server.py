@@ -4,10 +4,30 @@ import logging
 from collections import deque
 import os
 import json
+import configparser
+import secrets
 from threading import Lock
 
 app = Flask(__name__)
-# The secret key is no longer needed as sessions are removed.
+
+# Load configuration and set secret key
+def load_config():
+    config = configparser.ConfigParser()
+    if os.path.exists('config.ini'):
+        config.read('config.ini')
+        # Use password from config as base for secret key, or generate one
+        if config.has_option('Web', 'password'):
+            password = config.get('Web', 'password')
+            # Create a secret key based on the password
+            app.secret_key = f"demo2video_{password}_{secrets.token_hex(16)}"
+        else:
+            # Generate a random secret key
+            app.secret_key = secrets.token_hex(32)
+    else:
+        # Fallback secret key
+        app.secret_key = secrets.token_hex(32)
+
+load_config()
 
 log = logging.getLogger('werkzeug')
 log.setLevel(logging.ERROR)
@@ -91,7 +111,7 @@ def run_hyperlink():
         if not name: missing_params.append('name')
         
         error_msg = f"Missing required parameters: {', '.join(missing_params)}"
-        flash(error_msg, 'error') # Note: flash won't display without a secret key, but we leave it for now.
+        flash(error_msg, 'error')
         return redirect(url_for('index'))
     
     if not steam64.isdigit() or len(steam64) != 17:
