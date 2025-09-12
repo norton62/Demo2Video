@@ -7,12 +7,18 @@ import threading
 import pyautogui
 import shutil
 import re
+import datetime
+import requests
+import calendar
 
 import csdm_cli_handler
 import youtube_uploader
 import demo_downloader
 from obs_recorder import OBSRecorder
 from web_server import demo_queue, current_status, completed_jobs, run_web_server, save_results
+from demo_downloader import DemoExpiredException
+
+
 
 def setup_logging():
     log_dir = 'logs'
@@ -50,11 +56,50 @@ def extract_demo_name_from_url(demo_url_or_code):
         # Return share code as-is
         return demo_url_or_code
 
+def getSteamname(suspect_steam_id):
+    # Get name for S64ID from cswatch API
+    cswresp = requests.get(f'https://cswatch.in/api/players/{suspect_steam_id}')
+    cswdata = cswresp.json()
+
+    if cswdata and 'player' in cswdata:
+        if 'name' in cswdata['player']:
+            steamname_unesc = cswdata['player']['name']
+            if steamname_unesc == "Unknown Player":
+                if 'leetifyPublicStats' in cswdata['player'] and 'name' in cswdata['player']['leetifyPublicStats']:
+                    steamname_unesc = cswdata['player']['leetifyPublicStats']['name']
+                else:
+                    steamname_unesc = "No username available"
+        else:
+            steamname_unesc = "No username available"
+    else:
+        steamname_unesc = "No username available"
+
+    # YouTube doesn't like some characters
+    ret_steamname = steamname_unesc.translate(str.maketrans({
+        "<": "-",
+        ">": "-",
+        "¯": "-",
+        "\\": "-",
+        "/": "-",
+        "(": "-",
+        ")": "-",
+        "ツ": "-"
+    }))
+
+    return ret_steamname
+
+
 def rename_video_with_suspect_info(source_file, steam64_id, demo_name):
     """Rename video file in place with suspect and demo information."""
     try:
+        # Added timestamp
+        gmt = time.gmtime()
+        ts_for_name = calendar.timegm(gmt)
+        steamname = getSteamname(steam64_id)
+
         source_dir = os.path.dirname(source_file)
-        base_name = f"{steam64_id} - {demo_name}"
+        base_name = f"{steamname} - {steam64_id} - Highlights - {ts_for_name}" # Changed Youtube upload title 
+
         new_filename = f"{base_name}.mp4"
         new_path = os.path.join(source_dir, new_filename)
         
@@ -98,12 +143,14 @@ def processing_worker():
 
     while True:
         try:
+            task_status_override = False
             job = demo_queue.get()
             suspect_steam_id = job['suspect_steam_id']
             user_input = job['share_code']
+            youtube_upload = job['youtube_upload']
             
             # Check if YouTube upload is requested (overrides default setting)
-            youtube_upload = job.get('youtube_upload', not video_generate_only)
+            #youtube_upload = job.get('savemethod', not video_generate_only)
             
             update_status("Processing", "Starting new job...", suspect_steam_id)
 
@@ -146,8 +193,8 @@ def processing_worker():
                 if not csdm_cli_handler.start_highlights(csdm_project_path, demo_path, suspect_steam_id):
                     raise RuntimeError("Failed to launch highlights.")
 
-                logging.info("Waiting 20 seconds for CS2 to load...")
-                time.sleep(20)
+                logging.info("Waiting 15 seconds for CS2 to load...")
+                time.sleep(15)
                 
                 update_status("Recording", "Starting OBS recording...", suspect_steam_id)
                 obs.start_recording()
@@ -159,11 +206,31 @@ def processing_worker():
 
                 workflow_successful = True
 
+            except DemoExpiredException as e:
+                logging.warning(f"Prep stage failed for {suspect_steam_id}: {e}")
+                update_status("Error", "Demo Expired", suspect_steam_id, "prep_status")
+                ts = time.time()
+                completed_jobs.append({
+                    "timestamp": datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S'),
+                    "suspect_steam_id": suspect_steam_id,
+                    "share_code": job['share_code'],
+                    "youtube_link": "Demo expired",
+                    "task_status": "Demo expired",
+                    "final_video_path": final_video_path,
+                    "youtube_upload": youtube_upload or "N/A",
+                    "submitted_by": job.get('submitted_by', 'N/A'),
+                    "suspect_steam_name": steamname
+                })
+                save_results()
+
             except Exception as e:
                 logging.error(f"A critical error occurred for {suspect_steam_id}: {e}")
                 update_status("Error", f"Workflow failed: {e}", suspect_steam_id)
 
+
+
             finally:
+                steamname = getSteamname(suspect_steam_id)
                 # --- Cleanup ---
                 if obs.is_recording:
                     obs.stop_recording()
@@ -186,10 +253,12 @@ def processing_worker():
                         latest_file = max(files, key=os.path.getctime)
                         logging.info(f"Latest recording found: {latest_file}")
                         
+
+                        # youtube_upload =  True;
                         if youtube_upload:
                             # Upload to YouTube
                             update_status("Uploading", f"Uploading {os.path.basename(latest_file)}...", suspect_steam_id)
-                            video_title = f"Suspected Cheater: {suspect_steam_id} - Highlights"
+                            video_title = f"{steamname} - {suspect_steam_id} - Highlights"
                             youtube_link = youtube_uploader.upload_video(latest_file, video_title)
                             
                             if youtube_link:
@@ -208,6 +277,9 @@ def processing_worker():
                             youtube_link = f"file://{final_video_path}"  # Local file reference
                             update_status("Finished", "Video saved locally!", suspect_steam_id)
 
+                       
+
+
                     except Exception as e:
                         if youtube_upload:
                             logging.error(f"Failed to upload the recording: {e}")
@@ -217,21 +289,26 @@ def processing_worker():
                             logging.error(f"Failed to save the recording: {e}")
                             task_status = "Failed to Save"
                             update_status("Error", f"Save failed: {e}", suspect_steam_id)
+                        
+
                 else:
                     logging.warning("Workflow did not complete successfully. Skipping upload/save.")
                     task_status = "Processing Failed"
 
-            # Add the completed job to the results list
-            completed_jobs.append({
-                "suspect_steam_id": suspect_steam_id,
-                "share_code": job['share_code'],
-                "youtube_link": youtube_link or "Processing Failed",
-                "task_status": task_status or "Processing Failed",
-                "final_video_path": final_video_path,
-                "youtube_upload": youtube_upload,
-                "submitted_by": job.get('submitted_by', 'N/A')
-            })
-            save_results()
+
+                ts = time.time()
+                completed_jobs.append({
+                    "timestamp": datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S'),
+                    "suspect_steam_id": suspect_steam_id,
+                    "share_code": job['share_code'],
+                    "youtube_link": youtube_link or "Processing Failed",
+                    "task_status": task_status or "Processing Failed",
+                    "final_video_path": final_video_path,
+                    "youtube_upload": youtube_upload or "N/A",
+                    "submitted_by": job.get('submitted_by', 'N/A'),
+                    "suspect_steam_name": steamname
+                })
+                save_results()
 
             demo_queue.task_done()
             time.sleep(5)

@@ -15,6 +15,7 @@ def load_config():
     config = configparser.ConfigParser()
     if os.path.exists('config.ini'):
         config.read('config.ini')
+        video_generate_only_conf = config.get('Video','video_generate_only')
         # Use password from config as base for secret key, or generate one
         if config.has_option('Web', 'password'):
             password = config.get('Web', 'password')
@@ -26,6 +27,8 @@ def load_config():
     else:
         # Fallback secret key
         app.secret_key = secrets.token_hex(32)
+        logging.error("No access to ini")
+        video_generate_only_conf = True
 
 load_config()
 
@@ -41,7 +44,7 @@ current_status = {
 }
 
 RESULTS_FILE = 'results.json'
-completed_jobs = deque(maxlen=50) 
+completed_jobs = deque(maxlen=250) # results.json now saves 250 entries instead of 50
 results_lock = Lock()
 
 def save_results():
@@ -73,7 +76,7 @@ def load_results():
 @app.route('/')
 def index():
     # No login check is needed.
-    return render_template('index.html')
+    return render_template("index.html")
 
 @app.route('/add_demo', methods=['POST'])
 def add_demo():
@@ -81,11 +84,16 @@ def add_demo():
     share_code = request.form.get('share_code')
     suspect_steam_id = request.form.get('suspect_steam_id')
     submitted_by = request.form.get('submitted_by')
+    youtube_upload = request.form.get('youtube_upload').lower() in ['True','true']
+
+    # Personal QoL code
+    # if(submitted_by == "538676037559517205" or submitted_by == 538676037559517205):
+    #    submitted_by = "OeschMe"
 
     if not all([share_code, suspect_steam_id, submitted_by]):
         return jsonify({"success": False, "message": "All fields are required."}), 400
 
-    job = {"share_code": share_code, "suspect_steam_id": suspect_steam_id, "submitted_by": submitted_by}
+    job = {"share_code": share_code, "suspect_steam_id": suspect_steam_id, "submitted_by": submitted_by, "youtube_upload": youtube_upload}
     demo_queue.put(job)
     logging.info(f"Added new job to queue: {job}")
     
@@ -99,10 +107,24 @@ def run_hyperlink():
     Example URL: http://localhost:5001/run?demo=CSGO-87xm7-dtW7U-s9Ubx-sRc3X-BZAYN&steam64=76561198872751464&name=Soul
     Or with demo URL: http://localhost:5001/run?demo=http://replay129.valve.net/730/003767354559668683295_1542993054.dem.bz2&steam64=76561198872751464&name=Soul
     """
+    config = configparser.ConfigParser()
+    if os.path.exists('config.ini'):
+        config.read('config.ini')
+        video_generate_only_conf = config.get('Video','video_generate_only')
     demo = request.args.get('demo')
     steam64 = request.args.get('steam64')
     name = request.args.get('name')
-    youtube_upload = request.args.get('youtube_upload', '').lower() == 'true'
+    youtube_upload = request.args.get('youtube_upload', '')
+    if(youtube_upload == ""):
+        if(video_generate_only_conf != True):
+            youtube_upload = True
+        else:
+            youtube_upload = False
+
+
+    # Personal QoL code
+    # if(submitted_by == "538676037559517205" or submitted_by == 538676037559517205):
+    #    submitted_by = "OeschMe
     
     if not all([demo, steam64, name]):
         missing_params = []
