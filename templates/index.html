@@ -33,7 +33,7 @@
                 <form id="demo-form">
                     <input type="text" id="share_code" name="share_code" placeholder="Enter Steam Run Link or Share Code" required>
                     <input type="text" id="suspect_steam_id" name="suspect_steam_id" placeholder="Enter Suspect's Steam64 ID" required>
-                    <input type="text" id="submitted_by" name="submitted_by" placeholder="Your Name" required value="OeschMe">
+                    <input type="text" id="submitted_by" name="submitted_by" placeholder="Your Name" required value="">
 
                     <div>
                         Save method:
@@ -161,7 +161,7 @@ SuspectID,Sharecode,<local/yt>,[submitter]"></textarea>
             $.each(batcharray_raw, function(index, value){
                 var temp_array = value.split(","); // Split to subarray
                 if(temp_array.length == 3){ // Add submitter if missing
-                    temp_array.push("OeschMe");
+                    temp_array.push("Anonymous");
                 }
 
                 temp_array = $.map(temp_array, function(value){ // remove whitespaces
@@ -337,7 +337,7 @@ SuspectID,Sharecode,<local/yt>,[submitter]"></textarea>
 
                 if (result.success) {
                     this.reset(); // Clear the form
-                    $("#submitted_by").val("OeschMe");
+                    $("#submitted_by").val("");
                     checkDefaultMethod();
                 }
             } catch (error) {
