@@ -535,8 +535,8 @@ SuspectID,Sharecode,<local/yt>,[submitter]"></textarea>
         function checkDefaultMethod(){
             var defaultChecked = $.cookie('defaultChecked')
             if(defaultChecked == null){
-                $.cookie('defaultChecked','youtube', {expires: cookieExpire});
-                defaultChecked = "youtube";
+                $.cookie('defaultChecked','local', {expires: cookieExpire});
+                defaultChecked = "local";
             }
             if (defaultChecked == "local") {
                 $("#savemethod_youtube").prop('checked', false);
