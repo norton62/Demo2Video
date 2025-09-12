@@ -28,3 +28,5 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+demo_downloader.py.old
+node-v22.18.0-x64.msi
