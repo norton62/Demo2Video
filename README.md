@@ -4,6 +4,8 @@ This program automates the process of downloading a Counter-Strike 2 demo, analy
 
 This project uses the command-line tools provided by **CS Demo Manager** to handle the demo analysis and launch the game for recording.
 
+### This is a fork with QoL updates, for changes see "What's different?" in the bottom.
+
 ## Features
 
 * **Web Interface**: A simple web UI to queue up demos using a share code and Steam64 ID.
@@ -92,3 +94,49 @@ To upload videos, you need Google API credentials.
     * Open your web browser and go to `http://localhost:5001`.
     * Log in with the password you set in `config.ini`.
     * You can now start adding demos to the queue.
+  
+
+## What's different?
+
+### run.bat
+* Resolves Node/NVM and Python for this window (no PATH drama).
+* Starts the CSDM dev server and the CS Demo Processor.
+* Launches OBS (if you saved its path on first run).
+* Opens the web UI at http://localhost:5001.
+
+### main.py
+* Automatically fetch suspects name from CSWatch API and filter non-YouTube friendly characters out
+* Add timestamp to each completed job
+* Changed file naming scheme (including YouTube title naming)
+* Added support for per job save method processing
+
+
+### index.html
+* Added batch process form
+* Rearranged previous jobs list
+  * Added timestamp and suspects name
+* Added per job save method radio buttons
+  * This setting is saved as a cookike
+* Added "Copy YT link" button in the table row and "Show output" dialog
+  * Also shows popup with the youtube URL when copy is succesfull
+
+
+* Added jQ cookie lib
+* System has functionality for custom "Submitter name" renaming, but it's not fully implemented yet.
+
+
+### style.css
+* Made whole interface wider
+* Adjusted table cells to fit timestamp
+* Added styles for other added features
+
+### webserver.py
+* Made results list longer
+* Fixed default save method getting overriden when getting job from URI (ie. CSWatch Get Highlights -link)
+
+### youtube_uploader.py
+* Removed description
+* changed tag "cheater" to "suspect"
+
+### demo_downloader.py
+* Rearranged API endpoints for load balancing
