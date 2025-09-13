@@ -8,10 +8,14 @@ import re
 # This module handles downloading and extracting CS2 demos from share codes.
 
 API_URLS = [
+    "https://scapi.csreplay.xyz/decode",
+    "https://csreplay.fi/decode",
     "https://csreplay.moon-moon.tech/decode",
-    "https://csreplay2.moon-moon.tech/decode",
-    "https://appeared-cite-reach-fy.trycloudflare.com"
+    "https://csreplay2.moon-moon.tech/decode"
 ]
+class DemoExpiredException(Exception):
+    """Custom exception for when a demo link has expired."""
+    pass
 
 def parse_share_code(share_link_or_code):
     """Extracts the match share code from a full steam link or just the code."""
@@ -59,8 +63,7 @@ def download_demo(share_code_or_url, download_folder):
 
         for api_url in API_URLS:
             try:
-                # UPDATED: Changed from GET to POST request
-                logging.info(f"Attempting to get download link from: {api_url} with POST request.")
+                logging.info(f"Attempting to get download link from: {api_url}")
                 
                 response = requests.post(api_url, headers=headers, json=payload)
                 response.raise_for_status()
@@ -68,11 +71,16 @@ def download_demo(share_code_or_url, download_folder):
                 api_response_data = response.json()
                 download_url = api_response_data.get("downloadLink")
 
+                #logging.info(f"API response: {api_response_data}")
+
+                if "expired" in response.text.lower():
+                    raise DemoExpiredException("API response indicates the demo has expired.")
+
                 if download_url:
                     logging.info("Successfully retrieved download link.")
                     break
                 else:
-                    logging.warning(f"API at {api_url} did not return a download URL.")
+                    logging.warning(f"API at {api_url} did not return a download URL. Response: {api_response_data}")
 
             except requests.exceptions.RequestException as e:
                 logging.error(f"Failed to connect to API at {api_url}: {e}")

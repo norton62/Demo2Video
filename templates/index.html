@@ -5,6 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CS Demo Processor</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script>/*! jquery.cookie v1.4.1 | MIT */
+!function(a){"function"==typeof define&&define.amd?define(["jquery"],a):"object"==typeof exports?a(require("jquery")):a(jQuery)}(function(a){function b(a){return h.raw?a:encodeURIComponent(a)}function c(a){return h.raw?a:decodeURIComponent(a)}function d(a){return b(h.json?JSON.stringify(a):String(a))}function e(a){0===a.indexOf('"')&&(a=a.slice(1,-1).replace(/\\"/g,'"').replace(/\\\\/g,"\\"));try{return a=decodeURIComponent(a.replace(g," ")),h.json?JSON.parse(a):a}catch(b){}}function f(b,c){var d=h.raw?b:e(b);return a.isFunction(c)?c(d):d}var g=/\+/g,h=a.cookie=function(e,g,i){if(void 0!==g&&!a.isFunction(g)){if(i=a.extend({},h.defaults,i),"number"==typeof i.expires){var j=i.expires,k=i.expires=new Date;k.setTime(+k+864e5*j)}return document.cookie=[b(e),"=",d(g),i.expires?"; expires="+i.expires.toUTCString():"",i.path?"; path="+i.path:"",i.domain?"; domain="+i.domain:"",i.secure?"; secure":""].join("")}for(var l=e?void 0:{},m=document.cookie?document.cookie.split("; "):[],n=0,o=m.length;o>n;n++){var p=m[n].split("="),q=c(p.shift()),r=p.join("=");if(e&&e===q){l=f(r,g);break}e||void 0===(r=f(r))||(l[q]=r)}return l};h.defaults={},a.removeCookie=function(b,c){return void 0===a.cookie(b)?!1:(a.cookie(b,"",a.extend({},c,{expires:-1})),!a.cookie(b))}});</script>
+    <script>
+        var cookieExpire = new Date();
+
+        //set expiry to current time plus 15 minutes in milliseconds
+        cookieExpire.setTime(cookieExpire.getTime() + (30 * 24 * 60 * 60 * 1000)); 
+    </script>
 </head>
 <body>
     <div class="container">
@@ -24,14 +33,29 @@
                 <form id="demo-form">
                     <input type="text" id="share_code" name="share_code" placeholder="Enter Steam Run Link or Share Code" required>
                     <input type="text" id="suspect_steam_id" name="suspect_steam_id" placeholder="Enter Suspect's Steam64 ID" required>
-                    <input type="text" id="submitted_by" name="submitted_by" placeholder="Your Name" required>
+                    <input type="text" id="submitted_by" name="submitted_by" placeholder="Your Name" required value="">
+
+                    <div>
+                        Save method:
+                    </div>
+                        <label for="savemethod_youtube" class="radioItem">
+                            <input class="radioButton" type="radio" name="youtube_upload" id="savemethod_youtube" value="True" onchange="$.cookie('defaultChecked' ,'youtube', {expires: cookieExpire});">
+                            YouTube
+                        </label>
+                    
+                        <label for="savemethod_local" class="radioItem">
+                            <input class="radioButton" type="radio" name="youtube_upload" id="savemethod_local" value="False" onchange="$.cookie('defaultChecked' ,'local', {expires: cookieExpire});">
+                            Local
+                        </label>
+                
+
                     <button type="submit">Add to Queue</button>
                 </form>
                 <p id="form-message"></p>
             </div>
 
-            <div class="queue-container">
-                <h2>Processing Queue (<span id="queue-count">0</span>)</h2>
+            <div class="queue-container">                
+                <h2>Processing Queue (<span id="queue-count">0</span>) - <a href="#" class="open-bform" onclick="addBatchPopup('open');event.preventDefault();">Add batch</a></h2>
                 <ul id="queue-list">
                     <!-- Queue items will be added here by JavaScript -->
                 </ul>
@@ -43,7 +67,8 @@
             <table id="results-table">
                 <thead>
                     <tr>
-                        <th>Suspect Steam64 ID</th>
+                        <th>Timestamp</th>
+                        <th>Suspect Steam info</th>
                         <th>Share Code or Demo Link</th>
                         <th>Submitted By</th>
                         <th>Task Status</th>
@@ -70,7 +95,116 @@
         </div>
     </div>
 
+    <div id="copySuccess"><h3>Succesfully copied <span id="copycptext"></span> to clipboard!</h3></div>
+    <div id="batch-form-bg" onclick="addBatchPopup('close');"></div>
+    <div id="batch-form-container">
+        <h2 style="margin-top: 0px;">Batch processor form</h2>
+        <h2 style="font-size: 1em; margin-top: -20px; margin-bottom: 0px">&lt;select/option&gt; [optional]</h2>
+        <small>Default save method is "local" (fallback), youtube upload is triggered with "yt" or "youtube" (non-casesensitive), if submitter is not set, will use dafeult "N/A"</small><br>
+        <small>SuspectID and Sharecode are required, save method is semi-required and submitter is fully optional.</small><br>
+        <textarea id="batchprocessorinput" placeholder="SuspectID,Sharecode,<local/yt>,[submitter]
+SuspectID,Sharecode,<local/yt>,[submitter]
+SuspectID,Sharecode,<local/yt>,[submitter]"></textarea>
+
+        <button id="submitBatch" class="submitBatch" onclick="submitBatch();">Submit</button>
+
+        <div><a href="#" class="open-bform" style="float: right;" onclick="addBatchPopup('close');event.preventDefault();">Close</a></div>
+    </div>
+
     <script>
+
+        async function runBactchRoutine(content){
+
+            var upload_this = "False"; 
+            if(content[2] != undefined){
+                if(content[2].toLowerCase() == "yt" || content[2].toLowerCase() == "youtube"){
+                    upload_this = "True";
+                }
+            }
+
+            const formData = new FormData();
+            formData.append("share_code", content[1]);
+            formData.append("suspect_steam_id", content[0]);
+            formData.append("submitted_by", content[3]);
+            formData.append("youtube_upload", upload_this);
+
+            const formMessage = document.getElementById('form-message');
+
+            try {
+                const response = await fetch('/add_demo', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+                
+                //formMessage.textContent = result.message;
+                //formMessage.className = result.success ? 'success' : 'error';
+
+                if (result.success) {
+                    //this.reset(); // Clear the form
+                    checkDefaultMethod();
+                }
+            } catch (error) {
+                //formMessage.textContent = 'An error occurred while submitting the form.';
+                //formMessage.className = 'error';
+            }
+            
+            // Update status immediately after submission
+            
+        }
+
+        function submitBatch(){
+            var batchcontent = $("#batchprocessorinput").val(); // Get the batch
+            var batcharray_raw = batchcontent.split("\n"); // Split to array
+            //console.log(batcharray_raw);
+            var batcharray = [];
+            $.each(batcharray_raw, function(index, value){
+                var temp_array = value.split(","); // Split to subarray
+                if(temp_array.length == 3){ // Add submitter if missing
+                    temp_array.push("Anonymous");
+                }
+
+                temp_array = $.map(temp_array, function(value){ // remove whitespaces
+                    return value.replace(/ /g, '');
+                });
+                batcharray[index] = temp_array; // return as array
+            });
+
+            //console.log(batcharray);
+
+            $.each(batcharray, function(index, value){
+                runBactchRoutine(value);
+            });
+            addBatchPopup("close");
+            $("#batchprocessorinput").val("");
+            updateStatus();
+
+
+        }
+
+        function addBatchPopup(dir){
+            if(dir == "open"){
+                $("#batch-form-container").fadeIn();
+                $("#batch-form-bg").fadeIn();
+            }
+            else{
+                $("#batch-form-container").fadeOut();
+                $("#batch-form-bg").fadeOut();
+            }
+        }
+
+        function copyToCP(linkdata) {
+            $("#copySuccess").stop();
+            var $temp = $("<input>");
+            $("body").append($temp);
+            $temp.val(linkdata).select();
+            document.execCommand("copy");
+            $("#copycptext").html(linkdata);
+            $("#copySuccess").slideDown(300);
+            $temp.remove();
+            setTimeout(function(){$("#copySuccess").slideUp(300);},2000);
+        }
+
         // Function to fetch and update status from the server
         async function updateStatus() {
             try {
@@ -109,8 +243,13 @@
                         const cell3 = row.insertCell(2);
                         const cell4 = row.insertCell(3);
                         const cell5 = row.insertCell(4);
+                        const cell6 = row.insertCell(5);
+                        
+                        cell2.innerHTML = result.suspect_steam_name;
+                        cell2.innerHTML += "<br>";
+                        cell2.innerHTML += result.suspect_steam_id;
 
-                        cell1.textContent = result.suspect_steam_id;
+                        cell1.textContent = result.timestamp;
                         
                         // Handle long demo URLs with truncation and tooltip
                         const shareCodeText = result.share_code;
@@ -120,35 +259,57 @@
                             truncatedSpan.textContent = shareCodeText.substring(0, 47) + '...';
                             truncatedSpan.setAttribute('data-full-text', shareCodeText);
                             truncatedSpan.title = shareCodeText; // Fallback tooltip
-                            cell2.appendChild(truncatedSpan);
+                            cell3.appendChild(truncatedSpan);
                         } else {
-                            cell2.textContent = shareCodeText;
+                            cell3.textContent = shareCodeText;
                         }
                         
-                        cell3.textContent = result.submitted_by;
+                        cell4.textContent = result.submitted_by;
                         
                         // Task Status cell
                         const taskStatus = result.task_status || 'Unknown';
-                        cell4.textContent = taskStatus;
+                        cell5.textContent = taskStatus;
                         
                         // Set color based on status
                         if (taskStatus === 'Uploaded' || taskStatus === 'Saved Locally') {
-                            cell4.style.color = '#03dac6'; // Success color
+                            cell5.style.color = '#03dac6'; // Success color
                         } else if (taskStatus.includes('Failed')) {
-                            cell4.style.color = '#cf6679'; // Error color
+                            cell5.style.color = '#cf6679'; // Error color
                         }
                         
                         // Actions cell
-                        const showButton = document.createElement('button');
-                        showButton.textContent = 'Show Output';
-                        showButton.className = 'show-output-btn';
-                        showButton.onclick = () => showVideoOutput(result);
-                        cell5.appendChild(showButton);
+                         if (result.youtube_upload && result.task_status === 'Uploaded') {
+                            // YouTube video
+                            const videoId = extractYouTubeVideoId(result.youtube_link);
+                            if (videoId) {
+                                // <button class="copylink" onclick="copyToCP('${result.youtube_link}');">Copy to clipboard</button>
+                                const showButton = document.createElement('button');
+                                showButton.textContent = 'Show Output';
+                                showButton.className = 'show-output-btn';
+                                showButton.style = 'width: 48%';
+                                showButton.onclick = () => showVideoOutput(result);
+                                cell6.appendChild(showButton);
+                                const copyButton = document.createElement('button');
+                                copyButton.textContent = 'Copy YT link';
+                                copyButton.className = 'show-output-btn';
+                                copyButton.style = 'width: 48%; margin-left: 4%; background-color: #86fc86;';
+                                copyButton.onclick = () => copyToCP(result.youtube_link);
+                                cell6.appendChild(copyButton);
+                            }
+                        }
+                        else{
+                            const showButton = document.createElement('button');
+                            showButton.textContent = 'Show Output';
+                            showButton.className = 'show-output-btn';
+                            showButton.onclick = () => showVideoOutput(result);
+                            cell6.appendChild(showButton); 
+                        }
+                        
                     });
                 } else {
                     const row = resultsBody.insertRow(0);
                     const cell = row.insertCell(0);
-                    cell.colSpan = 5;
+                    cell.colSpan = 6;
                     cell.textContent = 'No completed jobs yet.';
                     cell.style.textAlign = 'center';
                 }
@@ -176,6 +337,8 @@
 
                 if (result.success) {
                     this.reset(); // Clear the form
+                    $("#submitted_by").val("");
+                    checkDefaultMethod();
                 }
             } catch (error) {
                 formMessage.textContent = 'An error occurred while submitting the form.';
@@ -188,6 +351,7 @@
 
         // Function to show video output in a modal
         function showVideoOutput(result) {
+
             const modal = document.getElementById('video-modal');
             const modalContent = document.getElementById('modal-video-content');
             const modalTitle = document.getElementById('modal-title');
@@ -205,7 +369,8 @@
                                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
                                 allowfullscreen>
                         </iframe>
-                        <p><a href="${result.youtube_link}" target="_blank">Open in YouTube</a></p>
+                        <p><a href="${result.youtube_link}" target="_blank">Open in YouTube</a></p><br>
+                        <button class="copylink" onclick="copyToCP('${result.youtube_link}');">Copy to clipboard</button>
                     `;
                 } else {
                     modalContent.innerHTML = `<p>YouTube video available: <a href="${result.youtube_link}" target="_blank">Watch on YouTube</a></p>`;
@@ -366,6 +531,22 @@
         setInterval(updateStatus, 3000);
         // Initial fetch on page load
         updateStatus();
+
+        function checkDefaultMethod(){
+            var defaultChecked = $.cookie('defaultChecked')
+            if(defaultChecked == null){
+                $.cookie('defaultChecked','local', {expires: cookieExpire});
+                defaultChecked = "local";
+            }
+            if (defaultChecked == "local") {
+                $("#savemethod_youtube").prop('checked', false);
+                $("#savemethod_local").prop('checked', true)
+            }else{
+                $("#savemethod_youtube").prop('checked', true);
+                $("#savemethod_local").prop('checked', false);
+            }
+        }
+        checkDefaultMethod();
     </script>
 </body>
 </html>

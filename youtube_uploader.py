@@ -36,7 +36,7 @@ def get_youtube_service():
     
     return build('youtube', 'v3', credentials=creds)
 
-def upload_video(video_path, title, description="Suspected cheater highlights.", category="20", privacy_status="unlisted"):
+def upload_video(video_path, title, description="", category="20", privacy_status="unlisted"):
     """
     Uploads a video file to YouTube.
 
@@ -61,7 +61,7 @@ def upload_video(video_path, title, description="Suspected cheater highlights.",
             'snippet': {
                 'title': title,
                 'description': description,
-                'tags': ['csgo', 'cheater', 'highlights'],
+                'tags': ['csgo', 'suspect', 'highlights'],
                 'categoryId': category
             },
             'status': {
