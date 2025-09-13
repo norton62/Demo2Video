@@ -13,8 +13,6 @@ This project uses the command-line tools provided by **CS Demo Manager** to hand
 * **Headless Recording**: Launches CS2 via the CSDM CLI to play highlights, which can be recorded by an external program like OBS.
 * **YouTube Upload**: Automatically uploads the final video to a specified YouTube channel.
 * **Persistent Results**: Saves a history of completed jobs in a local `results.json` file.
-* **Password Protection**: The web interface is protected by a simple password.
-
 
 ## Setup Instructions
 
@@ -59,7 +57,7 @@ To upload videos, you need Google API credentials.
 
 1.  Go to the [Google Cloud Console](https://console.cloud.google.com/) and create a new project.
 2.  Enable the **"YouTube Data API v3"**.
-3.  Create an **OAuth 2.0 Client ID** for a **Desktop app**.
+3.  Create an **OAuth 2.0 Client ID** for a **Desktop app**. Remember to add yourself as test user using the email that's tied to your YouTube channel.
 4.  Download the credentials JSON file, rename it to `client_secrets.json`, and place it in the root of this project folder.
 5.  Run the authorization script from your terminal:
     ```bash
@@ -68,7 +66,16 @@ To upload videos, you need Google API credentials.
     This will open a browser window for you to authorize the application. A `token.json` file will be created.
 
 ## How to Run
+### Automatic method
 
+*Steps 1 and 2 are necessary only on first run.*
+
+1. Configure the variables in `/autorun/run-demo2video.bat`
+2. Move the bat file to your desired location, eg. Desktop
+3. Run the bat file.
+
+
+### Manual method
 1.  **Start the CSDM Dev Server**:
     * Open a terminal and navigate to your **modified** CSDM project folder.
     * Run the command: `node scripts/develop-cli.mjs`
