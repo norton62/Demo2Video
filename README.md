@@ -70,11 +70,12 @@ To upload videos, you need Google API credentials.
 ## How to Run
 ### Automatic method
 
-*Steps 1 and 2 are necessary only on first run.*
+Double-click run.bat (repo root). It:
 
-1. Configure the variables in `/autorun/run-demo2video.bat`
-2. Move the bat file to your desired location, eg. Desktop
-3. Run the bat file.
+* Resolves Node/NVM and Python for this window (no PATH drama).
+* Starts the CSDM dev server and the CS Demo Processor.
+* Launches OBS (if you saved its path on first run).
+* Opens the web UI at http://localhost:5001.
 
 
 ### Manual method
