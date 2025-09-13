@@ -16,8 +16,13 @@ This project uses the command-line tools provided by **CS Demo Manager** to hand
 * **YouTube Upload**: Automatically uploads the final video to a specified YouTube channel.
 * **Persistent Results**: Saves a history of completed jobs in a local `results.json` file.
 
-## Setup Instructions
+## Automatic installation
+1. Use [Moon²s](https://github.com/m0onmo0n/Demo2Video-Installer) fork of Demo2Video-installer
+2. Use my [modder script](https://github.com/OeschMe/Demo2Video-modder) to apply edits found in this fork
+3. Done
 
+
+## Manual installation
 ### 1. Prerequisites
 
 * **Python 3.7+**: Ensure Python is installed and added to your system's PATH.
